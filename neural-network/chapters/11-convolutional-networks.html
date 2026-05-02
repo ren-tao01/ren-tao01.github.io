@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 11 · Convolutional Networks — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="11">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 11 of 14</p>
+    <h1>Convolutional Networks</h1>
+    <p><em>An MLP that knows it is looking at an image. Local receptive fields, shared weights, and the convolution operation that does both.</em></p>
+
+    <section id="why-special">
+      <h2>Why images need special treatment</h2>
+      <p>
+        Suppose you flatten a $224 \times 224$ RGB image into a $150{,}528$-dimensional vector and feed it to a fully connected layer of $4{,}096$ units. That single layer has $616$ million weights. Worse, the network throws away all spatial information in the first multiplication: pixel $(0, 0)$ and pixel $(0, 1)$ are arbitrary entries of the flat vector, no longer next to each other.
+      </p>
+      <p>
+        Two facts about images that an MLP ignores but a CNN exploits:
+      </p>
+      <ul>
+        <li><strong>Locality</strong>: a pixel's identity is determined by its relationship to its neighbors, not by its position $50$ pixels away.</li>
+        <li><strong>Translation invariance</strong>: a cat in the top-left corner is the same cat as one in the middle. The same feature detector should fire wherever it appears.</li>
+      </ul>
+    </section>
+
+    <section id="convolution">
+      <h2>The convolution operation</h2>
+      <p>
+        A small <strong>kernel</strong> (also called a filter) — for example a $3 \times 3$ array of numbers — slides across the input image. At every position, it computes the dot product of its values with the underlying patch of pixels. The collection of all those dot products is the <strong>output feature map</strong>.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 540 240" width="540" aria-labelledby="fig-conv-title" role="img">
+          <title id="fig-conv-title">A 3x3 kernel sliding over a 5x5 input to produce a 3x3 output</title>
+          <!-- 5x5 input grid -->
+          <g stroke="#1a4d6b" stroke-width="1">
+            <g fill="#d6e6f0">
+              <rect x="20"  y="40"  width="36" height="36"/>
+              <rect x="56"  y="40"  width="36" height="36"/>
+              <rect x="92"  y="40"  width="36" height="36"/>
+              <rect x="128" y="40"  width="36" height="36"/>
+              <rect x="164" y="40"  width="36" height="36"/>
+              <rect x="20"  y="76"  width="36" height="36"/>
+              <rect x="56"  y="76"  width="36" height="36"/>
+              <rect x="92"  y="76"  width="36" height="36"/>
+              <rect x="128" y="76"  width="36" height="36"/>
+              <rect x="164" y="76"  width="36" height="36"/>
+              <rect x="20"  y="112" width="36" height="36"/>
+              <rect x="56"  y="112" width="36" height="36"/>
+              <rect x="92"  y="112" width="36" height="36"/>
+              <rect x="128" y="112" width="36" height="36"/>
+              <rect x="164" y="112" width="36" height="36"/>
+              <rect x="20"  y="148" width="36" height="36"/>
+              <rect x="56"  y="148" width="36" height="36"/>
+              <rect x="92"  y="148" width="36" height="36"/>
+              <rect x="128" y="148" width="36" height="36"/>
+              <rect x="164" y="148" width="36" height="36"/>
+              <rect x="20"  y="184" width="36" height="36"/>
+              <rect x="56"  y="184" width="36" height="36"/>
+              <rect x="92"  y="184" width="36" height="36"/>
+              <rect x="128" y="184" width="36" height="36"/>
+              <rect x="164" y="184" width="36" height="36"/>
+            </g>
+          </g>
+          <!-- highlight 3x3 patch -->
+          <rect x="56" y="76" width="108" height="108" fill="rgba(201,123,60,0.18)" stroke="#c97b3c" stroke-width="3"/>
+          <text x="110" y="32" font-family="Georgia, serif" font-size="13" text-anchor="middle">5×5 input</text>
+          <!-- arrow -->
+          <text x="240" y="135" font-family="Georgia, serif" font-size="22" fill="#4a4a4a" text-anchor="middle">→</text>
+          <text x="240" y="156" font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="middle">3×3 kernel</text>
+          <!-- output 3x3 -->
+          <g stroke="#3f6529" stroke-width="1" fill="#d8e7c8">
+            <rect x="320" y="76"  width="36" height="36"/>
+            <rect x="356" y="76"  width="36" height="36"/>
+            <rect x="392" y="76"  width="36" height="36"/>
+            <rect x="320" y="112" width="36" height="36"/>
+            <rect x="356" y="112" width="36" height="36"/>
+            <rect x="392" y="112" width="36" height="36"/>
+            <rect x="320" y="148" width="36" height="36"/>
+            <rect x="356" y="148" width="36" height="36"/>
+            <rect x="392" y="148" width="36" height="36"/>
+          </g>
+          <rect x="320" y="76" width="36" height="36" fill="#c97b3c" stroke="#8c4a14" stroke-width="2"/>
+          <text x="374" y="60" font-family="Georgia, serif" font-size="13" text-anchor="middle">3×3 output</text>
+          <!-- formula -->
+          <text x="270" y="220" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">each output pixel = dot product of kernel with the highlighted patch</text>
+        </svg>
+        <figcaption>A $3\times 3$ kernel applied to a $5\times 5$ input produces a $3\times 3$ output (no padding, stride 1).</figcaption>
+      </figure>
+
+      <p>
+        Formally, with input $X$ and kernel $K$ of size $k \times k$,
+      </p>
+      $$ Y_{ij} \;=\; \sum_{u=0}^{k-1} \sum_{v=0}^{k-1} K_{uv}\, X_{i+u,\, j+v}. $$
+      <p>
+        (Mathematicians call this <em>cross-correlation</em>; "convolution" in their sense flips the kernel. In deep learning we use the unflipped form and call it convolution. It doesn't matter which — the kernel learns whatever orientation works.)
+      </p>
+      <p>
+        Two parameters tweak the operation:
+      </p>
+      <ul>
+        <li><strong>Stride</strong>: how many pixels the kernel moves between dot products. Stride 1 keeps every position; stride 2 keeps every other one and halves the output dimension.</li>
+        <li><strong>Padding</strong>: zeros (or reflections) added around the input border so the output can stay the same size as the input. "Same" padding is shorthand for "enough zeros to keep the spatial size."</li>
+      </ul>
+    </section>
+
+    <section id="parameter-sharing">
+      <h2>Parameter sharing</h2>
+      <p>
+        The same $3 \times 3$ kernel — nine numbers — slides over every position in the image. So a convolutional layer with a single $3 \times 3$ kernel has only nine weights, no matter how big the input is. Compare with a fully-connected layer mapping $H \cdot W$ pixels to $H \cdot W$ outputs: that's $(HW)^2$ weights.
+      </p>
+      <p>
+        Parameter sharing is the heart of why CNNs are practical. It is also why they are translation-equivariant: shift the input by one pixel and the output shifts by one pixel.
+      </p>
+    </section>
+
+    <section id="channels">
+      <h2>Channels and stacks</h2>
+      <p>
+        Color images have three channels (R, G, B). Hidden feature maps have many. A general convolutional layer takes an input tensor of shape $C_\text{in} \times H \times W$ (channels, height, width) and produces an output of shape $C_\text{out} \times H' \times W'$. Each output channel is a separate kernel of shape $C_\text{in} \times k \times k$ that does a 3D dot product over the input.
+      </p>
+      <p>
+        Total weights for a layer with $C_\text{in}$ input channels, $C_\text{out}$ output channels, and a $k \times k$ kernel:
+      </p>
+      $$ C_\text{out} \cdot C_\text{in} \cdot k \cdot k \;\;+\;\; C_\text{out} \;\;(\text{biases}). $$
+      <p>
+        For example, $C_\text{in}=64, C_\text{out}=128, k=3$ gives $73{,}728 + 128 = 73{,}856$ weights — a lot less than a fully-connected analog.
+      </p>
+    </section>
+
+    <section id="pooling">
+      <h2>Pooling</h2>
+      <p>
+        After a convolutional layer (and a nonlinearity) we often shrink the spatial dimensions with a <strong>pooling</strong> layer. The two common kinds:
+      </p>
+      <ul>
+        <li><strong>Max pooling</strong> ($2 \times 2$, stride 2): replace each $2 \times 2$ patch by its maximum. Halves spatial size; keeps only the "strongest signal" in each region.</li>
+        <li><strong>Average pooling</strong>: replace each patch by its mean.</li>
+      </ul>
+      <p>
+        Pooling has no trainable parameters. It enlarges the receptive field of subsequent layers (each output pixel now summarizes a bigger input region) at modest computational cost. Modern architectures often replace pooling with strided convolutions that perform downsampling and feature extraction in one step.
+      </p>
+    </section>
+
+    <section id="receptive-field">
+      <h2>The receptive field</h2>
+      <p>
+        After several layers of $3 \times 3$ convolutions and pooling, an output pixel responds to a much larger region of the input image — its <strong>receptive field</strong>. Stack two $3 \times 3$ convolutions and each output sees a $5 \times 5$ patch. Stack three and you see $7 \times 7$. Add stride-2 pooling and the receptive field grows multiplicatively.
+      </p>
+      <p>
+        Hierarchy emerges naturally: shallow layers learn edges and color blobs; middle layers learn textures and parts; deep layers learn whole objects. We didn't program that hierarchy. It is what gradient descent finds when the architecture has the right inductive bias.
+      </p>
+    </section>
+
+    <section id="lenet-resnet">
+      <h2>From LeNet to ResNet, in a paragraph</h2>
+      <p>
+        <strong>LeNet-5</strong> (LeCun et al., 1998) showed the recipe: alternate convolution + nonlinearity + pooling, and finish with a small MLP. Twenty years later, <strong>AlexNet</strong> (2012) used the same recipe with eight layers, ReLU, dropout, and a GPU and won ImageNet.
+      </p>
+      <p>
+        <strong>VGG</strong> (2014) showed that a tower of small $3 \times 3$ convolutions with no shortcuts can go up to about 19 layers. Past that, training stops working — gradients vanish.
+      </p>
+      <p>
+        <strong>ResNet</strong> (2015) fixes that with one elegant idea: each block computes $\mathbf{a}_\text{out} = \mathbf{a}_\text{in} + F(\mathbf{a}_\text{in})$, where $F$ is two convolutional layers. The "skip connection" turns the layer into a small residual correction on top of the identity. Gradients now have a direct path back through the addition; networks can be hundreds of layers deep and still train. ResNet's pattern lives on inside transformers (Chapter 14).
+      </p>
+    </section>
+
+    <section id="cnn-summary">
+      <h2>What you have when you have a CNN</h2>
+      <p>
+        A pile of convolutions, nonlinearities, and pools that turns an image into a vector of features, followed by a fully-connected classifier head. The whole stack is differentiable, so backpropagation (Chapter 9) works without modification — the convolution layer's "weights" are the kernel entries, and the chain rule sends gradients through them just as it sends them through fully-connected weights.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>How many output pixels does a $3 \times 3$ kernel with stride 1, no padding, produce on a $7 \times 7$ input?</li>
+        <li>Why do CNNs use far fewer parameters than fully-connected networks for images?</li>
+        <li>What does "translation equivariance" mean?</li>
+        <li>Why does stacking two $3 \times 3$ convolutions give a receptive field of $5 \times 5$?</li>
+        <li>What problem do residual connections solve?</li>
+      </ol>
+      <p>
+        Answers: $5 \times 5$ — output dimension is $W - k + 1$. Because each kernel is shared across the entire image; one set of weights handles every position. Shift the input one pixel and the output shifts one pixel — the same feature detector fires in the new place. Each output of the second conv sees a $3 \times 3$ patch of the first conv's output, and each of those summed a $3 \times 3$ patch of the input, so the total span is $3 + 3 - 1 = 5$. Vanishing gradients in very deep stacks; the addition gives gradients a direct shortcut.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 11 complete.</strong>
+      <span class="next-link">Next: <a href="12-recurrent-networks.html">Chapter 12 — Recurrent Networks →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — Neural Networks From Scratch</title>
+<meta name="description" content="How to use this site, the prerequisites assumed, and the philosophy behind the chapter ordering.">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      Neural Networks From Scratch
+    </a>
+    <nav class="topnav" aria-label="Site">
+      <a href="index.html">Roadmap</a>
+      <a href="about.html" aria-current="page">About</a>
+      <a href="chapters/01-numbers-and-functions.html">Start</a>
+    </nav>
+  </div>
+</header>
+
+<main class="prose about-prose">
+  <p class="chapter-eyebrow">About</p>
+  <h1>How this site works</h1>
+  <p>
+    This is a self-paced reading path that takes you from high-school algebra to the Transformer block, with no steps skipped. Every chapter is a single page; every page is plain HTML, math, and hand-drawn SVG diagrams. There is no login, no tracking, no server. Your reading progress lives entirely in your browser's <code>localStorage</code>.
+  </p>
+
+  <section id="prerequisites">
+    <h2>What you need to know already</h2>
+    <p>
+      Almost nothing.
+    </p>
+    <ul>
+      <li><strong>High-school algebra.</strong> You should be comfortable with variables, exponents, and reading a function like $f(x) = 2x + 1$.</li>
+      <li><strong>Basic graph reading.</strong> If you can read a chart with an $x$-axis and a $y$-axis, you are ready.</li>
+      <li><strong>That's it.</strong> No calculus, no linear algebra, no programming. Chapters 1–5 build all of those from the ground up before you ever see a neuron.</li>
+    </ul>
+  </section>
+
+  <section id="how-to-read">
+    <h2>How to read it</h2>
+    <p>
+      Read the chapters in order. The roadmap on the home page shows the dependency graph — every chapter is built from the ones that point to it, and assumes nothing else.
+    </p>
+    <p>
+      Each chapter is sized for a focused 30–60 minute session. Don't rush. The math is not hard, but it is dense; one careful read beats three skims.
+    </p>
+    <p>
+      Every chapter ends with a "Self-check" section. If you can answer those questions in your own words, the chapter has done its job. If you can't, scroll back up — the answer is somewhere on the page, not in your memory.
+    </p>
+  </section>
+
+  <section id="progress">
+    <h2>How progress works</h2>
+    <ul>
+      <li>A chapter flips to <strong>in progress</strong> the moment you start scrolling through it.</li>
+      <li>It flips to <strong>complete</strong> when the page's "Chapter complete" footer scrolls into view — that is, when you've read to the end.</li>
+      <li>Downstream chapters become <strong>ready</strong> (highlighted) once all their prerequisites are complete.</li>
+      <li>State is stored in your browser only. Clearing site data, or clicking <em>Reset progress</em> in the footer, wipes it.</li>
+      <li>Different browsers and devices each track their own progress.</li>
+    </ul>
+  </section>
+
+  <section id="chapter-ordering">
+    <h2>Why the chapters are ordered the way they are</h2>
+    <p>
+      The site is divided into three movements:
+    </p>
+    <ol>
+      <li>
+        <strong>The mathematical foundations (Ch 1–5).</strong>
+        Numbers, vectors, derivatives, gradients, probability. Nothing here mentions neural networks. These five chapters are the alphabet; the rest of the site is the writing.
+      </li>
+      <li>
+        <strong>The neural network proper (Ch 6–10).</strong>
+        Single neuron, loss, gradient descent, multi-layer perceptron, backpropagation, training tricks. By the end of Chapter 10 you can describe — equations included — exactly what happens in one training step of a deep network.
+      </li>
+      <li>
+        <strong>Architectures (Ch 11–14).</strong>
+        Convolutions for images. Recurrence for sequences. Attention to fix recurrence. Transformers as the synthesis. Each architecture answers a specific failure of the previous one.
+      </li>
+    </ol>
+    <p>
+      You can use the dependency graph to skip around if you already know parts of the early material. The graph is honest: if a chapter doesn't point to it, it really isn't required. But every chapter from 6 onward depends transitively on Chapters 2–4, so the math foundations are not optional.
+    </p>
+  </section>
+
+  <section id="philosophy">
+    <h2>Editorial choices</h2>
+    <ul>
+      <li><strong>Math first, code never.</strong> Not a single line of Python. The only way to truly understand a neural network is the math; the code is a thin shadow of it. You can implement it in any language once you have the equations.</li>
+      <li><strong>Derivations, not appeals to authority.</strong> Whenever a formula appears, the chapter shows where it came from. The "why" is more important than the "what."</li>
+      <li><strong>One worked example per concept.</strong> Every chapter that introduces an algorithm walks through it on small numbers you can verify with a calculator.</li>
+      <li><strong>No interactive demos.</strong> Sliders and live training animations are fun but easy to use as a substitute for understanding. This site is for reading and thinking.</li>
+      <li><strong>Plain words.</strong> Where a piece of jargon is unavoidable, the chapter introduces it explicitly. Where it is avoidable, it is avoided.</li>
+    </ul>
+  </section>
+
+  <section id="offline">
+    <h2>Offline reading</h2>
+    <p>
+      The only network call any page makes is to load <a href="https://katex.org/">KaTeX</a> from a public CDN for math typesetting. Save the site to disk and the chapters work offline; equations will fall back to plain TeX source if the CDN is unreachable. Everything else — text, diagrams, progress tracking, the roadmap — is local.
+    </p>
+  </section>
+
+  <section id="errata">
+    <h2>If something is wrong</h2>
+    <p>
+      The site is one author's attempt to explain a hard subject clearly from first principles. There will be places where the explanation could be sharper, a derivation could be tighter, or a diagram could be clearer. If you spot one, your time would be well spent re-explaining the idea to yourself in your own words — that is, after all, the only useful way to read mathematics.
+    </p>
+  </section>
+
+  <div class="start-row" style="margin-top:32px;">
+    <a class="btn btn-primary" href="chapters/01-numbers-and-functions.html">Begin Chapter 1 →</a>
+    <a class="btn btn-secondary" href="index.html">See the roadmap</a>
+  </div>
+</main>
+
+<footer class="page-footer">
+  <p><a href="index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="js/progress.js"></script>
+<script>
+  // Wire the reset button on the about page.
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('reset-progress');
+    if (btn && window.NNProgress) {
+      btn.addEventListener('click', () => {
+        if (confirm('Reset all chapter progress? This cannot be undone.')) {
+          window.NNProgress.reset();
+          alert('Progress reset.');
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

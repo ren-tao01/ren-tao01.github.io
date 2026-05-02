@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 5 · Probability &amp; Information — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="5">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 5 of 14</p>
+    <h1>Probability &amp; Information</h1>
+    <p><em>Random variables. Mean and variance. Entropy. Cross-entropy. KL divergence. The handful of quantities that decide what "loss" actually measures when our outputs are probabilities.</em></p>
+
+    <section id="why">
+      <h2>Why probability shows up in deep learning</h2>
+      <p>
+        Most useful neural networks output probabilities. A classifier reports "85% confident this is a cat." A language model reports "the next token is <em>the</em> with probability 0.13." Once outputs are probabilities, the loss function should also speak the language of probability — distances between distributions, surprises, expectations. That is what this chapter sets up.
+      </p>
+    </section>
+
+    <section id="random-variables">
+      <h2>Random variables</h2>
+      <p>
+        A <strong>random variable</strong> is just a label for a number whose value is uncertain — perhaps it depends on a coin flip, perhaps on which sample we drew from a dataset. We say a random variable $X$ takes value $x$ with probability $P(X = x)$.
+      </p>
+      <p>
+        Two flavors:
+      </p>
+      <ul>
+        <li><strong>Discrete</strong>: $X$ takes finitely (or countably) many values. We give a probability to each. The list of probabilities is called the <em>probability mass function</em>, written $p(x)$. They must be nonnegative and sum to 1.</li>
+        <li><strong>Continuous</strong>: $X$ takes values in an interval. Probability is described by a <em>probability density function</em> $p(x) \ge 0$ that integrates to 1. The probability of landing exactly on any single point is zero; only intervals carry probability.</li>
+      </ul>
+
+      <figure>
+        <svg viewBox="0 0 480 220" width="480" aria-labelledby="fig-pmf-title" role="img">
+          <title id="fig-pmf-title">A probability mass function as a bar chart</title>
+          <line x1="40" y1="180" x2="460" y2="180" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="200" stroke="#1a1a1a" stroke-width="1.5"/>
+          <g fill="#2a6f97" stroke="#1a4d6b" stroke-width="1">
+            <rect x="80"  y="120" width="40" height="60"/>
+            <rect x="140" y="80"  width="40" height="100"/>
+            <rect x="200" y="50"  width="40" height="130"/>
+            <rect x="260" y="100" width="40" height="80"/>
+            <rect x="320" y="130" width="40" height="50"/>
+            <rect x="380" y="160" width="40" height="20"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="middle">
+            <text x="100" y="196">1</text>
+            <text x="160" y="196">2</text>
+            <text x="220" y="196">3</text>
+            <text x="280" y="196">4</text>
+            <text x="340" y="196">5</text>
+            <text x="400" y="196">6</text>
+            <text x="32"  y="184" text-anchor="end">0</text>
+            <text x="32"  y="100" text-anchor="end">p(x)</text>
+          </g>
+        </svg>
+        <figcaption>A discrete probability distribution over six possible values. Heights sum to 1.</figcaption>
+      </figure>
+    </section>
+
+    <section id="expectation-variance">
+      <h2>Expectation and variance</h2>
+      <p>
+        The <strong>expectation</strong> (or mean) of $X$ is the probability-weighted average of its possible values:
+      </p>
+      $$ \mathbb{E}[X] \;=\; \sum_{x} x\, p(x) \quad\text{(discrete)}, \qquad \mathbb{E}[X] = \int x\, p(x)\, dx \quad\text{(continuous)}. $$
+      <p>
+        The <strong>variance</strong> measures spread — how far $X$ tends to land from its mean:
+      </p>
+      $$ \mathrm{Var}[X] \;=\; \mathbb{E}\bigl[(X - \mathbb{E}[X])^2\bigr]. $$
+      <p>
+        Its square root is the <strong>standard deviation</strong>. We will care about variance in Chapter 10 — variance of activations and gradients drives whether networks train at all.
+      </p>
+    </section>
+
+    <section id="independence">
+      <h2>Independence</h2>
+      <p>
+        Two random variables $X$ and $Y$ are <strong>independent</strong> if knowing one tells you nothing about the other. Equivalently, the joint probability factorizes:
+      </p>
+      $$ P(X = x, Y = y) \;=\; P(X = x)\, P(Y = y). $$
+      <p>
+        The "joint probability is a product" is exactly why logarithms are natural for working with probabilities: $\ln$ of a product becomes a sum.
+      </p>
+    </section>
+
+    <section id="conditional">
+      <h2>Conditional probability and Bayes</h2>
+      <p>
+        The <strong>conditional probability</strong> of $X$ given $Y$ is
+      </p>
+      $$ P(X = x \mid Y = y) \;=\; \frac{P(X = x, Y = y)}{P(Y = y)}. $$
+      <p>
+        Bayes' rule rearranges this into a useful form when you can compute one direction but want the other:
+      </p>
+      $$ P(X \mid Y) \;=\; \frac{P(Y \mid X)\, P(X)}{P(Y)}. $$
+      <p>
+        We will not use Bayes' theorem directly in this site. We mention it because <em>maximum likelihood training</em> — the principle behind the cross-entropy loss in Chapter 7 — is a Bayesian-flavored idea trimmed of priors.
+      </p>
+    </section>
+
+    <section id="surprise">
+      <h2>Surprise: $-\ln p$</h2>
+      <p>
+        Suppose you observe an outcome $x$ that had probability $p(x)$. How <em>surprised</em> should you be? Two desiderata:
+      </p>
+      <ol>
+        <li>An outcome with probability $1$ is no surprise: surprise should be $0$.</li>
+        <li>Two independent surprises should add: if I see two independent rare events, I should be exactly as surprised as their individual surprises summed.</li>
+      </ol>
+      <p>
+        The unique function (up to a positive constant) that satisfies both is $-\ln p$. We call it <strong>surprise</strong> or <em>information content</em>. It's high for unlikely events and zero when $p = 1$.
+      </p>
+    </section>
+
+    <section id="entropy">
+      <h2>Entropy</h2>
+      <p>
+        The <strong>entropy</strong> $H(p)$ of a distribution $p$ is the expected surprise — how surprised you are <em>on average</em> about an outcome drawn from $p$:
+      </p>
+      $$ H(p) \;=\; -\sum_{x} p(x)\, \ln p(x). $$
+      <p>
+        Three useful facts:
+      </p>
+      <ul>
+        <li>$H(p) \ge 0$, with equality only when $p$ is concentrated on a single outcome (no surprise).</li>
+        <li>For a fixed support of $n$ outcomes, $H(p)$ is largest when $p$ is uniform — that's the maximum-uncertainty distribution.</li>
+        <li>Entropy is the average number of <em>nats</em> needed to encode an outcome from $p$ (or bits, if you swap $\ln$ for $\log_2$).</li>
+      </ul>
+
+      <figure>
+        <svg viewBox="0 0 480 220" width="480" aria-labelledby="fig-entropy-title" role="img">
+          <title id="fig-entropy-title">Comparing entropy of three distributions over six outcomes</title>
+          <g font-family="Georgia, serif" font-size="11" fill="#4a4a4a">
+            <text x="80"  y="200" text-anchor="middle">peaked</text>
+            <text x="240" y="200" text-anchor="middle">moderate</text>
+            <text x="400" y="200" text-anchor="middle">uniform</text>
+            <text x="80"  y="216" text-anchor="middle">low H</text>
+            <text x="240" y="216" text-anchor="middle">middle H</text>
+            <text x="400" y="216" text-anchor="middle">max H</text>
+          </g>
+          <!-- peaked -->
+          <g fill="#c97b3c" stroke="#8c4a14" stroke-width="1">
+            <rect x="38"  y="60" width="14" height="120"/>
+            <rect x="56"  y="160" width="14" height="20"/>
+            <rect x="74"  y="170" width="14" height="10"/>
+            <rect x="92"  y="170" width="14" height="10"/>
+            <rect x="110" y="170" width="14" height="10"/>
+            <rect x="128" y="170" width="14" height="10"/>
+          </g>
+          <!-- moderate -->
+          <g fill="#2a6f97" stroke="#1a4d6b" stroke-width="1">
+            <rect x="198" y="120" width="14" height="60"/>
+            <rect x="216" y="100" width="14" height="80"/>
+            <rect x="234" y="80"  width="14" height="100"/>
+            <rect x="252" y="100" width="14" height="80"/>
+            <rect x="270" y="120" width="14" height="60"/>
+            <rect x="288" y="140" width="14" height="40"/>
+          </g>
+          <!-- uniform -->
+          <g fill="#5b8c3e" stroke="#3f6529" stroke-width="1">
+            <rect x="358" y="120" width="14" height="60"/>
+            <rect x="376" y="120" width="14" height="60"/>
+            <rect x="394" y="120" width="14" height="60"/>
+            <rect x="412" y="120" width="14" height="60"/>
+            <rect x="430" y="120" width="14" height="60"/>
+            <rect x="448" y="120" width="14" height="60"/>
+          </g>
+        </svg>
+        <figcaption>Distributions ordered by entropy. The uniform distribution maxes out the uncertainty.</figcaption>
+      </figure>
+    </section>
+
+    <section id="cross-entropy">
+      <h2>Cross-entropy</h2>
+      <p>
+        Suppose the truth is $p$ (e.g. the actual one-hot label "this image is a cat"), but our model believes $q$ (e.g. it predicts $0.7$ cat, $0.2$ dog, $0.1$ horse). The <strong>cross-entropy</strong> measures the average surprise our model would feel about samples actually drawn from $p$:
+      </p>
+      $$ H(p, q) \;=\; -\sum_{x} p(x) \ln q(x). $$
+      <p>
+        The smaller this is, the better our model's beliefs match reality. Notice the asymmetry: we average using the <em>true</em> distribution but compute surprise using the <em>predicted</em> probabilities. That asymmetry is exactly why cross-entropy is a <em>directional</em> loss.
+      </p>
+      <p>
+        For a single training example with true label $y$ — a one-hot vector — and predicted probabilities $\hat{y}_1, \ldots, \hat{y}_C$, this collapses to the familiar negative-log-likelihood:
+      </p>
+      $$ \text{loss} \;=\; -\ln \hat{y}_{\text{correct class}}. $$
+      <p>
+        Picture: the network is rewarded by how much probability it places on the right class. Probability $1$ gives loss $0$. Probability $\to 0$ gives loss $\to \infty$. That severe punishment for confident wrong answers is what trains networks to be calibrated.
+      </p>
+    </section>
+
+    <section id="kl">
+      <h2>KL divergence</h2>
+      <p>
+        The <strong>Kullback–Leibler divergence</strong> from $q$ to $p$ measures how far $q$ is from $p$, in a probability-aware way:
+      </p>
+      $$ D_{\mathrm{KL}}(p \,\|\, q) \;=\; \sum_x p(x)\, \ln \frac{p(x)}{q(x)} \;=\; H(p, q) - H(p). $$
+      <p>
+        Two things to remember:
+      </p>
+      <ul>
+        <li>$D_{\mathrm{KL}}(p \,\|\, q) \ge 0$, with equality if and only if $p = q$.</li>
+        <li>It is <em>not</em> symmetric: $D_{\mathrm{KL}}(p \,\|\, q) \neq D_{\mathrm{KL}}(q \,\|\, p)$ in general. It is not a distance in the metric sense, but it acts like one for our purposes.</li>
+      </ul>
+      <p>
+        Since $H(p)$ doesn't depend on the model, minimizing cross-entropy is the same as minimizing KL divergence: both push the model's distribution $q$ toward the truth $p$.
+      </p>
+    </section>
+
+    <section id="softmax-and-likelihood">
+      <h2>The softmax outputs probabilities; cross-entropy scores them</h2>
+      <p>
+        We will meet the <strong>softmax</strong> in Chapter 6: it turns a vector of real numbers into a vector of probabilities that sum to 1. When you stack a softmax output and a cross-entropy loss you get the standard <em>classification head</em> of a neural network:
+      </p>
+      $$ \hat{y}_k \;=\; \frac{e^{z_k}}{\sum_{j} e^{z_j}}, \qquad \text{loss} \;=\; -\sum_{k} y_k \ln \hat{y}_k. $$
+      <p>
+        It works so well partly because the gradient simplifies enormously — the messy logs cancel pieces of the messy exponentials. We will work that out in Chapter 9.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>What is $\mathbb{E}[X]$ for a fair six-sided die?</li>
+        <li>If $p$ is concentrated entirely on one outcome, what is $H(p)$?</li>
+        <li>Why is $-\ln p(x)$ a sensible measure of surprise?</li>
+        <li>Why does minimizing cross-entropy minimize KL divergence?</li>
+        <li>Why are logarithms helpful when working with probabilities of independent events?</li>
+      </ol>
+      <p>
+        Answers: $3.5$; $0$ (no surprise); because it equals $0$ for certain events, grows for unlikely ones, and turns products of independent probabilities into sums; because $H(p,q) = H(p) + D_{\mathrm{KL}}(p\|q)$ and $H(p)$ is constant; because $\ln$ turns products into sums and avoids underflow.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 5 complete.</strong>
+      <span class="next-link">Next: <a href="06-the-neuron.html">Chapter 6 — The Neuron →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

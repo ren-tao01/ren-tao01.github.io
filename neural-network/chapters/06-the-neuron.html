@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 6 · The Neuron — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="6">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 6 of 14</p>
+    <h1>The Neuron</h1>
+    <p><em>One artificial neuron is a tiny machine: it takes a list of numbers, does a weighted sum, adds an offset, and squashes the result through a nonlinearity. Today we build it, and we examine each nonlinearity in turn.</em></p>
+
+    <section id="biology">
+      <h2>The biological inspiration (briefly)</h2>
+      <p>
+        Real neurons are messy electrochemical machines. They have many input channels (dendrites), they integrate incoming signals, and they fire (along an axon) once the integrated signal crosses a threshold. The artificial neuron borrows the silhouette of this story — many inputs, weighted summing, a thresholdy nonlinearity — and almost none of the underlying biology. We do not need biology to understand what follows.
+      </p>
+    </section>
+
+    <section id="anatomy">
+      <h2>Anatomy of an artificial neuron</h2>
+      <p>
+        Inputs $\mathbf{x} = (x_1, x_2, \ldots, x_n)$. Weights $\mathbf{w} = (w_1, w_2, \ldots, w_n)$. A scalar bias $b$. An activation function $\sigma$. The neuron computes:
+      </p>
+      $$ z \;=\; \mathbf{w} \cdot \mathbf{x} + b \;=\; \sum_{i=1}^{n} w_i\, x_i + b, $$
+      $$ a \;=\; \sigma(z). $$
+      <p>
+        The number $z$ is the <strong>pre-activation</strong>; $a$ is the <strong>activation</strong>. The pre-activation is a dot product (Chapter 2) plus an offset; the activation is the same $z$ pushed through a nonlinear function.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 220" width="480" aria-labelledby="fig-neuron-title" role="img">
+          <title id="fig-neuron-title">A schematic of a single artificial neuron</title>
+          <defs>
+            <marker id="arr_n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a1a1a"/>
+            </marker>
+          </defs>
+          <!-- inputs -->
+          <g font-family="Georgia, serif" font-size="14">
+            <circle cx="60"  cy="50"  r="14" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
+            <text x="60"  y="55" text-anchor="middle">x₁</text>
+            <circle cx="60"  cy="110" r="14" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
+            <text x="60"  y="115" text-anchor="middle">x₂</text>
+            <circle cx="60"  cy="170" r="14" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
+            <text x="60"  y="175" text-anchor="middle">x₃</text>
+          </g>
+          <!-- weighted edges -->
+          <g stroke="#1a1a1a" stroke-width="1.5">
+            <line x1="74" y1="50"  x2="220" y2="100" marker-end="url(#arr_n)"/>
+            <line x1="74" y1="110" x2="220" y2="110" marker-end="url(#arr_n)"/>
+            <line x1="74" y1="170" x2="220" y2="120" marker-end="url(#arr_n)"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="12" fill="#2a6f97">
+            <text x="135" y="68">w₁</text>
+            <text x="135" y="105">w₂</text>
+            <text x="135" y="155">w₃</text>
+          </g>
+          <!-- summer -->
+          <circle cx="240" cy="110" r="22" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2"/>
+          <text x="240" y="115" font-family="Georgia, serif" font-size="20" text-anchor="middle">Σ</text>
+          <text x="240" y="155" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" text-anchor="middle">+ b</text>
+          <!-- arrow to activation -->
+          <line x1="262" y1="110" x2="320" y2="110" stroke="#1a1a1a" stroke-width="1.5" marker-end="url(#arr_n)"/>
+          <!-- activation -->
+          <rect x="320" y="86" width="60" height="48" fill="#d8e7c8" stroke="#5b8c3e" stroke-width="2" rx="8"/>
+          <text x="350" y="116" font-family="Georgia, serif" font-size="18" text-anchor="middle">σ</text>
+          <!-- arrow to output -->
+          <line x1="380" y1="110" x2="450" y2="110" stroke="#1a1a1a" stroke-width="1.5" marker-end="url(#arr_n)"/>
+          <text x="430" y="100" font-family="Georgia, serif" font-size="14" text-anchor="middle">a</text>
+          <text x="240" y="190" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" text-anchor="middle">z = w·x + b</text>
+        </svg>
+        <figcaption>The single neuron: dot product, bias, activation. Everything else in this site is millions of these.</figcaption>
+      </figure>
+
+      <p>
+        Compare this to a single straight line $y = mx + b$. For one input it's identical, except instead of returning $z$ we return $\sigma(z)$. The activation function is what distinguishes a neural network from <em>linear regression</em>.
+      </p>
+    </section>
+
+    <section id="why-nonlinearity">
+      <h2>Why the nonlinearity matters</h2>
+      <p>
+        Suppose you stack two purely linear neurons: $a = w_2 (w_1 x + b_1) + b_2 = (w_1 w_2) x + (w_2 b_1 + b_2)$. That is a single line! Composition of linear maps is linear. So a stack of arbitrarily many linear layers can only ever express a single linear function. To represent richer relationships — curves, kinks, decision boundaries that aren't hyperplanes — you need a nonlinear step in between. We will prove the XOR example formally in Chapter 8.
+      </p>
+    </section>
+
+    <section id="sigmoid">
+      <h2>Activation: sigmoid</h2>
+      $$ \sigma(z) \;=\; \frac{1}{1 + e^{-z}}. $$
+      <p>
+        The sigmoid takes any real input and squashes it into $(0, 1)$. That made it natural for binary classification, where the output should be interpretable as a probability. We computed its derivative in Chapter 3:
+      </p>
+      $$ \sigma'(z) = \sigma(z)\bigl(1 - \sigma(z)\bigr). $$
+      <p>
+        Limitations:
+      </p>
+      <ul>
+        <li>Saturates: for large $|z|$ the slope is nearly zero, so gradients vanish — a major training difficulty for deep networks (Chapter 12).</li>
+        <li>Not zero-centered: outputs are always positive, which is mildly inconvenient for downstream layers.</li>
+      </ul>
+    </section>
+
+    <section id="tanh">
+      <h2>Activation: tanh</h2>
+      $$ \tanh(z) \;=\; \frac{e^z - e^{-z}}{e^z + e^{-z}}. $$
+      <p>
+        Range $(-1, 1)$. Effectively a re-centered, re-scaled sigmoid: $\tanh(z) = 2\sigma(2z) - 1$. Its derivative is
+      </p>
+      $$ \frac{d}{dz} \tanh(z) = 1 - \tanh^2(z). $$
+      <p>
+        Strictly preferable to sigmoid in hidden layers (it is zero-centered) but still saturates at the extremes.
+      </p>
+    </section>
+
+    <section id="relu">
+      <h2>Activation: ReLU</h2>
+      $$ \mathrm{ReLU}(z) \;=\; \max(0, z). $$
+      <p>
+        The "rectified linear unit." Cheap to compute. Doesn't saturate for positive inputs. Its derivative is the simplest of the lot:
+      </p>
+      $$ \frac{d}{dz} \mathrm{ReLU}(z) = \begin{cases} 1 & z > 0 \\ 0 & z < 0 \end{cases} \quad\text{(at $z=0$, conventionally taken to be 0).} $$
+      <p>
+        ReLU is the default activation in most modern feed-forward layers. It has its own pathology — neurons with permanently-negative pre-activations stop learning ("dying ReLUs") — and several variants (Leaky ReLU, GELU, SiLU) try to soften the kink at zero. For our purposes, plain ReLU is the right starting point.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 220" width="480" aria-labelledby="fig-acts-title" role="img">
+          <title id="fig-acts-title">Sigmoid, tanh, and ReLU plotted on the same axes</title>
+          <line x1="40" y1="120" x2="460" y2="120" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="250" y1="20" x2="250" y2="200" stroke="#1a1a1a" stroke-width="1.5"/>
+          <!-- sigmoid: smooth S, range 0..1 -->
+          <path d="M 50 116 Q 200 116, 250 100 Q 300 84, 450 80" fill="none" stroke="#2a6f97" stroke-width="2.5"/>
+          <!-- tanh: -1..1 -->
+          <path d="M 50 168 Q 200 168, 250 120 Q 300 72, 450 70" fill="none" stroke="#c97b3c" stroke-width="2.5"/>
+          <!-- ReLU: 0 left of origin, line right of origin -->
+          <line x1="50" y1="120" x2="250" y2="120" stroke="#5b8c3e" stroke-width="2.5"/>
+          <line x1="250" y1="120" x2="450" y2="20" stroke="#5b8c3e" stroke-width="2.5"/>
+          <text x="60"  y="36"  fill="#2a6f97" font-family="Georgia, serif" font-size="13">sigmoid</text>
+          <text x="60"  y="56"  fill="#c97b3c" font-family="Georgia, serif" font-size="13">tanh</text>
+          <text x="380" y="36" fill="#5b8c3e" font-family="Georgia, serif" font-size="13">ReLU</text>
+          <text x="244" y="216" font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="end">0</text>
+        </svg>
+        <figcaption>Three classic activation functions on a shared axis. Notice ReLU's straight slope of 1 to the right.</figcaption>
+      </figure>
+    </section>
+
+    <section id="softmax">
+      <h2>Activation: softmax (for the output layer)</h2>
+      <p>
+        When a network must output a probability over $C$ classes, we use the <strong>softmax</strong>. Given a vector $\mathbf{z} = (z_1, \ldots, z_C)$, define
+      </p>
+      $$ \mathrm{softmax}(\mathbf{z})_k \;=\; \frac{e^{z_k}}{\sum_{j=1}^{C} e^{z_j}}. $$
+      <p>
+        Properties:
+      </p>
+      <ul>
+        <li>Every output is in $(0, 1)$.</li>
+        <li>The outputs sum to 1 — they form a probability distribution.</li>
+        <li>It preserves the rank order of inputs (largest $z$ gives largest probability).</li>
+        <li>It is shift-invariant: subtracting the same constant from every $z$ does not change the result. We use this for numerical stability.</li>
+      </ul>
+      <p>
+        Softmax is the multi-class generalization of the sigmoid — and indeed, for two classes, softmax and sigmoid are equivalent.
+      </p>
+    </section>
+
+    <section id="vector-form">
+      <h2>The neuron in vector form</h2>
+      <p>
+        A whole layer of $m$ neurons receiving the same input vector $\mathbf{x} \in \mathbb{R}^n$ stacks into:
+      </p>
+      $$ \mathbf{z} \;=\; \mathbf{W}\mathbf{x} + \mathbf{b}, \qquad \mathbf{a} \;=\; \sigma(\mathbf{z}), $$
+      <p>
+        where $\mathbf{W} \in \mathbb{R}^{m \times n}$ is the weight matrix (each row is one neuron's weights), $\mathbf{b} \in \mathbb{R}^m$ is the bias vector, and $\sigma$ is applied element-wise. This is the entire computation of a fully-connected layer. Stack a few of these in a row and you have a multilayer perceptron — Chapter 8.
+      </p>
+    </section>
+
+    <section id="parameter-counting">
+      <h2>Counting parameters</h2>
+      <p>
+        A layer mapping $n$ inputs to $m$ outputs has $m \cdot n$ weights and $m$ biases — a total of $m(n+1)$ trainable numbers. A network with three layers of widths $784 \to 256 \to 64 \to 10$ (a small MNIST classifier) therefore has
+      </p>
+      $$ 256 \cdot 785 + 64 \cdot 257 + 10 \cdot 65 \;=\; 200\,960 + 16\,448 + 650 \;=\; 218\,058 $$
+      <p>
+        parameters. The right scale to think about. Modern language models simply have more zeros.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>Compute one neuron's output. Inputs $(1, 2, 3)$, weights $(0.5, -1, 2)$, bias $0$, activation ReLU. What is the output?</li>
+        <li>Why is purely linear stacking equivalent to one linear layer?</li>
+        <li>Why does softmax need division by a sum?</li>
+        <li>What is $\sigma'(z)$ at the value of $z$ where $\sigma(z) = 0.9$?</li>
+        <li>How many trainable parameters in a layer mapping $1024 \to 1024$?</li>
+      </ol>
+      <p>
+        Answers: $z = 0.5 - 2 + 6 = 4.5$, ReLU keeps it; output $4.5$. Composition of linear maps is linear. Division ensures outputs sum to 1. $0.9 \cdot 0.1 = 0.09$. $1024 \cdot 1024 + 1024 = 1\,049\,600$.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 6 complete.</strong>
+      <span class="next-link">Next: <a href="07-loss-and-gradient-descent.html">Chapter 7 — Loss &amp; Gradient Descent →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

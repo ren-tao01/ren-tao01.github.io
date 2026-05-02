@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 8 · MLP Forward Pass — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="8">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 8 of 14</p>
+    <h1>The Multilayer Perceptron — Forward Pass</h1>
+    <p><em>Stack the neuron from Chapter 6 into layers. Pass an input through them in matrix form. Then prove that without nonlinearities the whole tower would collapse to a single line.</em></p>
+
+    <section id="layers">
+      <h2>Layers, in symbols</h2>
+      <p>
+        Take an input $\mathbf{x} \in \mathbb{R}^{n_0}$ and hide $L$ layers between input and output. Each layer $\ell$ has its own weight matrix $\mathbf{W}^{(\ell)}$, bias $\mathbf{b}^{(\ell)}$, and activation $\sigma^{(\ell)}$. Define $\mathbf{a}^{(0)} = \mathbf{x}$, then for $\ell = 1, 2, \ldots, L$:
+      </p>
+      $$ \mathbf{z}^{(\ell)} = \mathbf{W}^{(\ell)} \mathbf{a}^{(\ell-1)} + \mathbf{b}^{(\ell)}, \qquad \mathbf{a}^{(\ell)} = \sigma^{(\ell)}\bigl(\mathbf{z}^{(\ell)}\bigr). $$
+      <p>
+        The last activation $\mathbf{a}^{(L)}$ is the network's output. For classification we typically take $\sigma^{(L)} = \mathrm{softmax}$; for regression we usually take $\sigma^{(L)} = \mathrm{identity}$.
+      </p>
+      <p>
+        Shapes:
+      </p>
+      <ul>
+        <li>$\mathbf{a}^{(\ell-1)} \in \mathbb{R}^{n_{\ell-1}}$.</li>
+        <li>$\mathbf{W}^{(\ell)} \in \mathbb{R}^{n_\ell \times n_{\ell-1}}$.</li>
+        <li>$\mathbf{b}^{(\ell)}, \mathbf{z}^{(\ell)}, \mathbf{a}^{(\ell)} \in \mathbb{R}^{n_\ell}$.</li>
+      </ul>
+    </section>
+
+    <section id="picture">
+      <h2>Picture of an MLP</h2>
+
+      <figure>
+        <svg viewBox="0 0 540 280" width="540" aria-labelledby="fig-mlp-title" role="img">
+          <title id="fig-mlp-title">A three-layer multilayer perceptron with 3-4-2-1 architecture</title>
+          <defs>
+            <marker id="arr_m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a4a4a"/>
+            </marker>
+          </defs>
+          <!-- input layer x1..x3 -->
+          <g fill="#fbe9d8" stroke="#c97b3c" stroke-width="2" font-family="Georgia, serif" font-size="13">
+            <circle cx="60"  cy="80"  r="16"/>
+            <circle cx="60"  cy="140" r="16"/>
+            <circle cx="60"  cy="200" r="16"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="13" text-anchor="middle">
+            <text x="60" y="84">x₁</text><text x="60" y="144">x₂</text><text x="60" y="204">x₃</text>
+            <text x="60" y="40">input</text>
+          </g>
+          <!-- hidden layer 1 (4) -->
+          <g fill="#d6e6f0" stroke="#2a6f97" stroke-width="2">
+            <circle cx="200" cy="50"  r="16"/>
+            <circle cx="200" cy="110" r="16"/>
+            <circle cx="200" cy="170" r="16"/>
+            <circle cx="200" cy="230" r="16"/>
+          </g>
+          <text x="200" y="20" font-family="Georgia, serif" font-size="13" text-anchor="middle">hidden 1</text>
+          <!-- hidden layer 2 (2) -->
+          <g fill="#d6e6f0" stroke="#2a6f97" stroke-width="2">
+            <circle cx="340" cy="110" r="16"/>
+            <circle cx="340" cy="170" r="16"/>
+          </g>
+          <text x="340" y="80" font-family="Georgia, serif" font-size="13" text-anchor="middle">hidden 2</text>
+          <!-- output (1) -->
+          <g fill="#d8e7c8" stroke="#5b8c3e" stroke-width="2">
+            <circle cx="480" cy="140" r="16"/>
+          </g>
+          <text x="480" y="110" font-family="Georgia, serif" font-size="13" text-anchor="middle">output</text>
+          <text x="480" y="144" font-family="Georgia, serif" font-size="13" text-anchor="middle">ŷ</text>
+          <!-- edges layer 1 to layer 2 -->
+          <g stroke="#bbb" stroke-width="1">
+            <line x1="76" y1="80"  x2="184" y2="50"/>
+            <line x1="76" y1="80"  x2="184" y2="110"/>
+            <line x1="76" y1="80"  x2="184" y2="170"/>
+            <line x1="76" y1="80"  x2="184" y2="230"/>
+            <line x1="76" y1="140" x2="184" y2="50"/>
+            <line x1="76" y1="140" x2="184" y2="110"/>
+            <line x1="76" y1="140" x2="184" y2="170"/>
+            <line x1="76" y1="140" x2="184" y2="230"/>
+            <line x1="76" y1="200" x2="184" y2="50"/>
+            <line x1="76" y1="200" x2="184" y2="110"/>
+            <line x1="76" y1="200" x2="184" y2="170"/>
+            <line x1="76" y1="200" x2="184" y2="230"/>
+          </g>
+          <!-- edges layer 2 to layer 3 -->
+          <g stroke="#bbb" stroke-width="1">
+            <line x1="216" y1="50"  x2="324" y2="110"/>
+            <line x1="216" y1="50"  x2="324" y2="170"/>
+            <line x1="216" y1="110" x2="324" y2="110"/>
+            <line x1="216" y1="110" x2="324" y2="170"/>
+            <line x1="216" y1="170" x2="324" y2="110"/>
+            <line x1="216" y1="170" x2="324" y2="170"/>
+            <line x1="216" y1="230" x2="324" y2="110"/>
+            <line x1="216" y1="230" x2="324" y2="170"/>
+          </g>
+          <!-- edges layer 3 to output -->
+          <g stroke="#bbb" stroke-width="1">
+            <line x1="356" y1="110" x2="464" y2="140"/>
+            <line x1="356" y1="170" x2="464" y2="140"/>
+          </g>
+          <!-- W labels -->
+          <g font-family="Georgia, serif" font-size="12" fill="#1a4d6b">
+            <text x="130" y="262" text-anchor="middle">W⁽¹⁾</text>
+            <text x="270" y="262" text-anchor="middle">W⁽²⁾</text>
+            <text x="410" y="262" text-anchor="middle">W⁽³⁾</text>
+          </g>
+        </svg>
+        <figcaption>A 3 → 4 → 2 → 1 fully connected MLP. Each circle is a neuron; each edge has a weight. Three weight matrices and three bias vectors in total.</figcaption>
+      </figure>
+
+      <p>
+        For this little network the three weight matrices have shapes $4 \times 3$, $2 \times 4$, and $1 \times 2$, plus biases of length $4$, $2$, and $1$ respectively. Total parameters: $12 + 8 + 2 + 4 + 2 + 1 = 29$.
+      </p>
+    </section>
+
+    <section id="forward-pass">
+      <h2>The forward pass, step by step</h2>
+      <p>
+        Computing the network's output for an input $\mathbf{x}$ is called the <strong>forward pass</strong>. It is just plugging $\mathbf{x}$ through the layered formula:
+      </p>
+      <ol>
+        <li>$\mathbf{a}^{(0)} \leftarrow \mathbf{x}$.</li>
+        <li>For $\ell = 1, \ldots, L$: compute $\mathbf{z}^{(\ell)} = \mathbf{W}^{(\ell)} \mathbf{a}^{(\ell-1)} + \mathbf{b}^{(\ell)}$, then $\mathbf{a}^{(\ell)} = \sigma^{(\ell)}(\mathbf{z}^{(\ell)})$.</li>
+        <li>Return $\hat{\mathbf{y}} = \mathbf{a}^{(L)}$.</li>
+      </ol>
+      <p>
+        That's the whole inference algorithm. Multiplications and additions with a few elementwise nonlinearities sprinkled in.
+      </p>
+
+      <h3 id="numerical-forward">A small numerical forward pass</h3>
+      <p>
+        Take a $2 \to 2 \to 1$ network with ReLU hidden activation and identity output. Suppose:
+      </p>
+      $$ \mathbf{W}^{(1)} = \begin{bmatrix} 1 & -1 \\ 0.5 & 2 \end{bmatrix}, \quad \mathbf{b}^{(1)} = \begin{bmatrix} 0 \\ -1 \end{bmatrix}, \quad \mathbf{W}^{(2)} = \begin{bmatrix} 1 & -2 \end{bmatrix}, \quad b^{(2)} = 0.5. $$
+      <p>
+        Input $\mathbf{x} = (2, 1)$.
+      </p>
+      <p><strong>Layer 1:</strong></p>
+      $$ \mathbf{z}^{(1)} = \begin{bmatrix} 1 & -1 \\ 0.5 & 2 \end{bmatrix}\!\begin{bmatrix} 2 \\ 1 \end{bmatrix} + \begin{bmatrix} 0 \\ -1 \end{bmatrix} = \begin{bmatrix} 1 \\ 2 \end{bmatrix}, \qquad \mathbf{a}^{(1)} = \mathrm{ReLU}(\mathbf{z}^{(1)}) = \begin{bmatrix} 1 \\ 2 \end{bmatrix}. $$
+      <p><strong>Layer 2:</strong></p>
+      $$ z^{(2)} = \begin{bmatrix} 1 & -2 \end{bmatrix}\!\begin{bmatrix} 1 \\ 2 \end{bmatrix} + 0.5 = -2.5, \qquad \hat{y} = -2.5. $$
+      <p>
+        We will reuse this network in Chapter 9 as the working example for backpropagation.
+      </p>
+    </section>
+
+    <section id="batched-forward">
+      <h2>Vectorized over a batch</h2>
+      <p>
+        In practice we run the forward pass on a whole batch of $N$ examples at once. Stack the inputs as columns of a matrix $\mathbf{X} \in \mathbb{R}^{n_0 \times N}$, and every formula stays the same:
+      </p>
+      $$ \mathbf{Z}^{(\ell)} = \mathbf{W}^{(\ell)} \mathbf{A}^{(\ell-1)} + \mathbf{b}^{(\ell)}, \qquad \mathbf{A}^{(\ell)} = \sigma^{(\ell)}(\mathbf{Z}^{(\ell)}). $$
+      <p>
+        The bias is added column-wise (broadcast). On a GPU this batched form runs at full hardware speed; that is why mini-batch training is fast.
+      </p>
+    </section>
+
+    <section id="why-nonlinear">
+      <h2>Why we need nonlinearities (the XOR proof)</h2>
+      <p>
+        Suppose every $\sigma^{(\ell)}$ is the identity. Then $\mathbf{a}^{(\ell)} = \mathbf{W}^{(\ell)} \mathbf{a}^{(\ell-1)} + \mathbf{b}^{(\ell)}$, and a tower of layers expands as
+      </p>
+      $$ \mathbf{a}^{(L)} = \mathbf{W}^{(L)} \cdots \mathbf{W}^{(1)} \mathbf{x} + \text{(some constant)}. $$
+      <p>
+        The product of matrices is itself a matrix. So the whole network collapses to a single affine function of $\mathbf{x}$. Depth gives you nothing. The nonlinearities are what unlock representational power.
+      </p>
+
+      <h3 id="xor">The XOR illustration</h3>
+      <p>
+        Consider four inputs and labels: $(0,0) \to 0$, $(0,1) \to 1$, $(1,0) \to 1$, $(1,1) \to 0$ — the XOR function. There is no straight line in the plane that puts the two $0$s on one side and the two $1$s on the other. So a one-layer linear classifier — which makes its decision based on whether $\mathbf{w} \cdot \mathbf{x} + b$ is above zero — cannot solve XOR. Period.
+      </p>
+      <p>
+        Add one ReLU hidden layer with two units and you can solve it:
+      </p>
+      $$ \mathbf{W}^{(1)} = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}, \quad \mathbf{b}^{(1)} = \begin{bmatrix} 0 \\ -1 \end{bmatrix}, \quad \mathbf{w}^{(2)} = \begin{bmatrix} 1 \\ -2 \end{bmatrix}, \quad b^{(2)} = 0. $$
+      <p>
+        Plug in each of the four inputs:
+      </p>
+
+      <table>
+        <thead><tr><th>$\mathbf{x}$</th><th>$\mathbf{z}^{(1)}$</th><th>$\mathbf{a}^{(1)} = \mathrm{ReLU}(\mathbf{z}^{(1)})$</th><th>$z^{(2)}$</th><th>output</th><th>target</th></tr></thead>
+        <tbody>
+          <tr><td>(0,0)</td><td>(0, -1)</td><td>(0, 0)</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>(0,1)</td><td>(1, 0)</td><td>(1, 0)</td><td>1</td><td>1</td><td>1</td></tr>
+          <tr><td>(1,0)</td><td>(1, 0)</td><td>(1, 0)</td><td>1</td><td>1</td><td>1</td></tr>
+          <tr><td>(1,1)</td><td>(2, 1)</td><td>(2, 1)</td><td>0</td><td>0</td><td>0</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Two hidden ReLU units, four free parameters of weights and two of biases, and the network gets XOR exactly right. The kink at zero is doing the work.
+      </p>
+    </section>
+
+    <section id="universality">
+      <h2>Universal approximation, briefly</h2>
+      <p>
+        A theorem due to Cybenko (1989), Hornik (1991), and others states roughly: a single hidden layer of finite width with a non-trivial activation function can approximate any continuous function on a bounded domain to any desired accuracy. So MLPs are universal — given enough neurons.
+      </p>
+      <p>
+        Two cautions:
+      </p>
+      <ul>
+        <li>"Enough neurons" can mean astronomically many. In practice, going deeper rather than wider lets you express the same function with vastly fewer parameters.</li>
+        <li>Universality says <em>nothing</em> about whether gradient descent will <em>find</em> the right weights from a random start. Optimization is a separate problem.</li>
+      </ul>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>If a network has architecture $784 \to 256 \to 256 \to 10$ with biases everywhere, how many parameters?</li>
+        <li>Why does a stack of identity-activation layers collapse to one linear map?</li>
+        <li>Why is the bias added column-wise when the inputs are stacked as columns?</li>
+        <li>Run the small numerical example with $\mathbf{x} = (1, 1)$ and the same weights. What is $\hat{y}$?</li>
+        <li>Universal approximation says you can approximate any continuous function with one hidden layer. Why do we use deeper networks anyway?</li>
+      </ol>
+      <p>
+        Answers: $256\cdot785 + 256\cdot257 + 10\cdot257 = 200{,}960 + 65{,}792 + 2{,}570 = 269{,}322$. Composition of linear maps is linear. The bias should add the same amount to every example in the batch. $\mathbf{z}^{(1)} = (0, 1.5)$, ReLU gives $(0, 1.5)$, $z^{(2)} = -3 + 0.5 = -2.5$, $\hat{y} = -2.5$. Depth gives much more parameter efficiency in practice and learns hierarchical features.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 8 complete.</strong>
+      <span class="next-link">Next: <a href="09-backpropagation.html">Chapter 9 — Backpropagation →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

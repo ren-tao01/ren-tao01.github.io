@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neural Networks From Scratch — A Reader's Path</title>
+<meta name="description" content="A self-paced, math-first journey from high-school algebra to Transformers. No prerequisites, no shortcuts.">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      Neural Networks From Scratch
+    </a>
+    <nav class="topnav" aria-label="Site">
+      <a href="index.html">Roadmap</a>
+      <a href="about.html">About</a>
+      <a href="chapters/01-numbers-and-functions.html">Start</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>From algebra to attention.</h1>
+  <p class="tagline">
+    A patient, math-first walk through everything you need to truly understand a neural network —
+    starting at numbers and ending at the Transformer block. No external libraries, no API calls,
+    no hand-waving. Just the ideas, in order.
+  </p>
+  <div class="start-row">
+    <a class="btn btn-primary" href="chapters/01-numbers-and-functions.html">Begin Chapter 1 →</a>
+    <a class="btn btn-secondary" href="about.html">How this site works</a>
+  </div>
+</section>
+
+<section class="roadmap-section" aria-labelledby="roadmap-heading">
+  <div class="roadmap-frame">
+    <h2 id="roadmap-heading">Concept dependency map</h2>
+    <p style="margin:0 0 12px; color:var(--ink-soft); font-size:0.95rem;">
+      Each circle is a chapter. Arrows mean "needs first." As you finish chapters they fill in,
+      and downstream chapters become <em>available</em> (highlighted). Your progress is saved
+      locally in your browser — nothing leaves your machine.
+    </p>
+    <div class="legend" role="list">
+      <span role="listitem"><span class="legend-dot"></span>unvisited</span>
+      <span role="listitem"><span class="legend-dot in-progress"></span>in progress</span>
+      <span role="listitem"><span class="legend-dot complete"></span>complete</span>
+      <span role="listitem"><span class="legend-dot available"></span>ready (deps met)</span>
+    </div>
+    <div id="full-roadmap"></div>
+  </div>
+</section>
+
+<section class="cards" aria-label="Chapters">
+  <a class="card" data-chapter-id="1" href="chapters/01-numbers-and-functions.html">
+    <div class="num">Chapter 1 · <span class="card-status">Ready</span></div>
+    <h3>Numbers &amp; Functions</h3>
+    <p>What we mean by a number, a variable, a function. The exponential and the logarithm — the only two non-polynomial functions you really need.</p>
+  </a>
+  <a class="card" data-chapter-id="2" href="chapters/02-linear-algebra.html">
+    <div class="num">Chapter 2 · <span class="card-status">Locked-ish</span></div>
+    <h3>Linear Algebra</h3>
+    <p>Vectors as arrows and as lists. Matrices as transformations. The dot product. Everything a neural network is, written compactly.</p>
+  </a>
+  <a class="card" data-chapter-id="3" href="chapters/03-calculus-derivatives.html">
+    <div class="num">Chapter 3 · <span class="card-status">Locked-ish</span></div>
+    <h3>Derivatives</h3>
+    <p>Slope, the limit, the rules of differentiation, and the chain rule. The single most important tool in machine learning.</p>
+  </a>
+  <a class="card" data-chapter-id="4" href="chapters/04-multivariable-and-gradients.html">
+    <div class="num">Chapter 4 · <span class="card-status">Locked-ish</span></div>
+    <h3>Multivariable &amp; Gradients</h3>
+    <p>Partial derivatives, the gradient as the steepest-ascent vector, and the chain rule when everything is a vector.</p>
+  </a>
+  <a class="card" data-chapter-id="5" href="chapters/05-probability-and-information.html">
+    <div class="num">Chapter 5 · <span class="card-status">Locked-ish</span></div>
+    <h3>Probability &amp; Information</h3>
+    <p>Random variables, expectation, variance, entropy, cross-entropy, KL divergence. Why we use logs in the loss function.</p>
+  </a>
+  <a class="card" data-chapter-id="6" href="chapters/06-the-neuron.html">
+    <div class="num">Chapter 6 · <span class="card-status">Locked-ish</span></div>
+    <h3>The Neuron</h3>
+    <p>One neuron: a weighted sum followed by a nonlinearity. Sigmoid, tanh, ReLU, softmax — and what their derivatives actually are.</p>
+  </a>
+  <a class="card" data-chapter-id="7" href="chapters/07-loss-and-gradient-descent.html">
+    <div class="num">Chapter 7 · <span class="card-status">Locked-ish</span></div>
+    <h3>Loss &amp; Gradient Descent</h3>
+    <p>Mean squared error, cross-entropy, and the simple loop that turns a network into a learner. A full hand-traced step.</p>
+  </a>
+  <a class="card" data-chapter-id="8" href="chapters/08-mlp-forward-pass.html">
+    <div class="num">Chapter 8 · <span class="card-status">Locked-ish</span></div>
+    <h3>MLP Forward Pass</h3>
+    <p>Stacking neurons into layers. The matrix form. A small proof that without nonlinearities, depth is a lie.</p>
+  </a>
+  <a class="card" data-chapter-id="9" href="chapters/09-backpropagation.html">
+    <div class="num">Chapter 9 · <span class="card-status">Locked-ish</span></div>
+    <h3>Backpropagation</h3>
+    <p>The chain rule, applied. A full numerical example through a 2-2-1 network, including every partial derivative.</p>
+  </a>
+  <a class="card" data-chapter-id="10" href="chapters/10-training-in-practice.html">
+    <div class="num">Chapter 10 · <span class="card-status">Locked-ish</span></div>
+    <h3>Training in Practice</h3>
+    <p>Initialization, momentum, Adam, weight decay, dropout, batch normalization. The tricks that make the loop converge.</p>
+  </a>
+  <a class="card" data-chapter-id="11" href="chapters/11-convolutional-networks.html">
+    <div class="num">Chapter 11 · <span class="card-status">Locked-ish</span></div>
+    <h3>Convolutional Networks</h3>
+    <p>The convolution operation, pooling, parameter sharing, and why image-shaped data needs image-shaped networks.</p>
+  </a>
+  <a class="card" data-chapter-id="12" href="chapters/12-recurrent-networks.html">
+    <div class="num">Chapter 12 · <span class="card-status">Locked-ish</span></div>
+    <h3>Recurrent Networks</h3>
+    <p>Sequence modeling, hidden state, BPTT, the vanishing-gradient problem, and the LSTM that fixes it.</p>
+  </a>
+  <a class="card" data-chapter-id="13" href="chapters/13-attention.html">
+    <div class="num">Chapter 13 · <span class="card-status">Locked-ish</span></div>
+    <h3>Attention</h3>
+    <p>Why every step shouldn't depend only on the last one. Scaled dot-product attention, queries, keys, values, multi-head.</p>
+  </a>
+  <a class="card" data-chapter-id="14" href="chapters/14-transformers.html">
+    <div class="num">Chapter 14 · <span class="card-status">Locked-ish</span></div>
+    <h3>Transformers</h3>
+    <p>Putting it together: positional encoding, the encoder block, stacking, and the bridge to modern language models.</p>
+  </a>
+</section>
+
+<footer class="page-footer">
+  <p>Self-contained. Open source-style. <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="js/progress.js"></script>
+<script src="js/roadmap.js"></script>
+<script src="js/landing.js"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 13 · Attention — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="13">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 13 of 14</p>
+    <h1>Attention</h1>
+    <p><em>A differentiable lookup table. Queries, keys, and values. The single equation that makes Transformers work.</em></p>
+
+    <section id="motivation">
+      <h2>The motivation, restated</h2>
+      <p>
+        An RNN forces every output to depend on a single fixed-size summary of all earlier inputs. That summary is the bottleneck. <strong>Attention</strong> removes the bottleneck by letting each output position look <em>directly</em> at every input position and decide for itself which parts to focus on.
+      </p>
+      <p>
+        The trick: the "decide which parts to focus on" step is differentiable, so the focusing rule is itself learnable. Backprop tunes it just like any other parameter.
+      </p>
+    </section>
+
+    <section id="qkv">
+      <h2>Queries, keys, and values</h2>
+      <p>
+        Forget neural networks for a moment. Imagine a Python dictionary:
+      </p>
+      <pre><code>scores = {"hello": 1, "world": 2, "code": 3}
+scores["world"]   # → 2</code></pre>
+      <p>
+        Three pieces: a <em>query</em> (the string you look up), <em>keys</em> (the dictionary's keys), and <em>values</em> (what comes back). Hard lookup matches the query against exactly one key.
+      </p>
+      <p>
+        <strong>Soft lookup.</strong> What if instead of an exact match, every key returned a similarity score, and we took a weighted combination of all the values? That's attention. Replace strings with vectors; replace exact match with a dot product; replace "pick one" with "softmax over similarities." Done.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">One-line summary</div>
+        <p>Attention is a differentiable lookup table where the address is computed by similarity, not equality.</p>
+      </div>
+    </section>
+
+    <section id="scaled-dot">
+      <h2>Scaled dot-product attention</h2>
+      <p>
+        We have $n$ "queries," each a vector of dimension $d_k$, stacked as rows of a matrix $\mathbf{Q} \in \mathbb{R}^{n \times d_k}$. We have $m$ "keys" $\mathbf{K} \in \mathbb{R}^{m \times d_k}$ and $m$ matching "values" $\mathbf{V} \in \mathbb{R}^{m \times d_v}$. Attention is one formula:
+      </p>
+      $$ \mathrm{Attn}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) \;=\; \mathrm{softmax}\!\left(\frac{\mathbf{Q}\mathbf{K}^\top}{\sqrt{d_k}}\right)\, \mathbf{V}. $$
+      <p>
+        Read it left to right:
+      </p>
+      <ol>
+        <li>$\mathbf{Q}\mathbf{K}^\top$ — for every (query, key) pair, compute their dot product. Result: an $n \times m$ matrix of similarity scores.</li>
+        <li>Divide by $\sqrt{d_k}$ — keep the scores from blowing up when $d_k$ is large (this is the "scaled" in the name).</li>
+        <li>Apply softmax along each row — turn each row of scores into a probability distribution over the $m$ keys.</li>
+        <li>Multiply by $\mathbf{V}$ — each output is the weighted average of the values, with the row's softmax weights.</li>
+      </ol>
+      <p>
+        The output has shape $n \times d_v$: one vector per query, each one a custom mixture of the values.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 540 200" width="540" aria-labelledby="fig-attn-title" role="img">
+          <title id="fig-attn-title">Attention pipeline: matmul, scale, softmax, weighted sum of values</title>
+          <g font-family="Georgia, serif" font-size="13" text-anchor="middle">
+            <rect x="20"  y="60" width="80" height="80" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2" rx="6"/>
+            <text x="60"  y="105">Q · Kᵀ</text>
+            <text x="60"  y="50" fill="#1a4d6b">scores</text>
+            <text x="130" y="105" fill="#4a4a4a">→</text>
+            <rect x="150" y="60" width="80" height="80" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2" rx="6"/>
+            <text x="190" y="100">÷ √d_k</text>
+            <text x="190" y="118" font-size="11">scale</text>
+            <text x="260" y="105" fill="#4a4a4a">→</text>
+            <rect x="280" y="60" width="80" height="80" fill="#d8e7c8" stroke="#5b8c3e" stroke-width="2" rx="6"/>
+            <text x="320" y="105">softmax</text>
+            <text x="320" y="50" fill="#3f6529">weights</text>
+            <text x="390" y="105" fill="#4a4a4a">·</text>
+            <rect x="410" y="60" width="80" height="80" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2" rx="6"/>
+            <text x="450" y="105">V</text>
+            <text x="450" y="50" fill="#1a4d6b">values</text>
+          </g>
+        </svg>
+        <figcaption>Three matrix multiplications and a softmax. That's it.</figcaption>
+      </figure>
+    </section>
+
+    <section id="self-attention">
+      <h2>Self-attention</h2>
+      <p>
+        In <strong>self-attention</strong>, the queries, keys, and values all come from the same input sequence — each token attends to every other token (and to itself). Concretely, given a sequence $\mathbf{X} \in \mathbb{R}^{n \times d}$, we compute
+      </p>
+      $$ \mathbf{Q} = \mathbf{X}\mathbf{W}_Q, \quad \mathbf{K} = \mathbf{X}\mathbf{W}_K, \quad \mathbf{V} = \mathbf{X}\mathbf{W}_V, $$
+      <p>
+        then run scaled dot-product attention on those. The matrices $\mathbf{W}_Q, \mathbf{W}_K, \mathbf{W}_V$ are learnable parameters. Each token's output is a context-aware summary of the whole sequence: tokens with high similarity to the current token get pulled in heavily; irrelevant tokens get downweighted.
+      </p>
+      <p>
+        Notice what self-attention is doing for free:
+      </p>
+      <ul>
+        <li>It is permutation-equivariant (without positional encoding, more on that in Chapter 14): treating tokens as a set, not a sequence.</li>
+        <li>It can mix information across arbitrary distances in one layer — no signal-decay-with-depth as in RNNs.</li>
+        <li>It is fully parallel: every output is computed independently, given $\mathbf{Q}, \mathbf{K}, \mathbf{V}$.</li>
+      </ul>
+    </section>
+
+    <section id="why-scale">
+      <h2>Why divide by $\sqrt{d_k}$</h2>
+      <p>
+        If the entries of $\mathbf{q}$ and $\mathbf{k}$ are independent random numbers with mean $0$ and variance $1$, the dot product $\mathbf{q} \cdot \mathbf{k} = \sum_{i=1}^{d_k} q_i k_i$ has variance $d_k$. So as $d_k$ grows, the raw scores grow with it. Plug very large logits into a softmax and you get a near-one-hot distribution — gradients vanish in the off-peaks and learning slows. Dividing by $\sqrt{d_k}$ keeps the scores' standard deviation around $1$ regardless of $d_k$, so softmax stays in a useful regime.
+      </p>
+    </section>
+
+    <section id="masking">
+      <h2>Masking (causal / padding)</h2>
+      <p>
+        Two common masks:
+      </p>
+      <ul>
+        <li><strong>Causal mask</strong> — used in decoders (and language models): position $i$ may only attend to positions $\le i$. We achieve this by adding $-\infty$ to the scores for "future" positions before the softmax, which makes their weights zero.</li>
+        <li><strong>Padding mask</strong> — when batching variable-length sequences padded to a fixed length: zero out attention to the padding tokens, so they don't contribute.</li>
+      </ul>
+      <p>
+        Masking is purely additive in the logits; gradients flow through the unmasked entries normally.
+      </p>
+    </section>
+
+    <section id="multi-head">
+      <h2>Multi-head attention</h2>
+      <p>
+        One attention operation is one "view" of the relationships. Different aspects of meaning often live in different subspaces — syntactic structure, topical content, coreference. Multi-head attention runs <strong>several attention operations in parallel</strong>, each in its own learned subspace, then concatenates their outputs:
+      </p>
+      $$ \mathrm{head}_i = \mathrm{Attn}\!\bigl(\mathbf{X}\mathbf{W}_Q^{(i)},\ \mathbf{X}\mathbf{W}_K^{(i)},\ \mathbf{X}\mathbf{W}_V^{(i)}\bigr), $$
+      $$ \mathrm{MHA}(\mathbf{X}) = \bigl[\mathrm{head}_1; \mathrm{head}_2; \ldots; \mathrm{head}_H\bigr]\, \mathbf{W}_O. $$
+      <p>
+        Each head has its own $\mathbf{W}_Q, \mathbf{W}_K, \mathbf{W}_V$ projecting into a smaller dimension $d_k = d / H$. The final $\mathbf{W}_O$ mixes the concatenated heads back to the original dimension $d$. Total parameters are similar to a single big-headed attention, but the model can attend to multiple things at once.
+      </p>
+    </section>
+
+    <section id="walkthrough">
+      <h2>A walkthrough of a single head</h2>
+      <p>
+        Suppose we have three tokens $\mathbf{x}_1, \mathbf{x}_2, \mathbf{x}_3$, each in $\mathbb{R}^4$, stacked as rows of $\mathbf{X} \in \mathbb{R}^{3 \times 4}$. Let $\mathbf{W}_Q, \mathbf{W}_K, \mathbf{W}_V \in \mathbb{R}^{4 \times 2}$. Compute:
+      </p>
+      <ol>
+        <li>$\mathbf{Q} = \mathbf{X}\mathbf{W}_Q \in \mathbb{R}^{3 \times 2}$. Three queries, each two-dimensional.</li>
+        <li>$\mathbf{K} = \mathbf{X}\mathbf{W}_K \in \mathbb{R}^{3 \times 2}$. Three keys.</li>
+        <li>$\mathbf{V} = \mathbf{X}\mathbf{W}_V \in \mathbb{R}^{3 \times 2}$. Three values.</li>
+        <li>$\mathbf{S} = \mathbf{Q}\mathbf{K}^\top / \sqrt{2} \in \mathbb{R}^{3 \times 3}$. The score matrix; entry $S_{ij}$ is "how much should query $i$ attend to key $j$."</li>
+        <li>$\mathbf{A} = \mathrm{softmax}(\mathbf{S})$ — softmax row-wise. Each row sums to 1.</li>
+        <li>$\mathbf{Y} = \mathbf{A}\mathbf{V} \in \mathbb{R}^{3 \times 2}$. Three new representations, each a learned mixture of the three values.</li>
+      </ol>
+      <p>
+        With three tokens we can draw $\mathbf{A}$ as a $3 \times 3$ heat map. A causal-masked self-attention has zeros above the diagonal: token 1 attends only to itself; token 2 attends to tokens 1 and 2; token 3 attends to all three.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 360 240" width="360" aria-labelledby="fig-attn-heatmap-title" role="img">
+          <title id="fig-attn-heatmap-title">A 3 by 3 attention weight matrix as a heatmap</title>
+          <g font-family="Georgia, serif" font-size="12">
+            <text x="60"  y="20" text-anchor="middle">key 1</text>
+            <text x="160" y="20" text-anchor="middle">key 2</text>
+            <text x="260" y="20" text-anchor="middle">key 3</text>
+            <text x="20"  y="68"  text-anchor="end">query 1</text>
+            <text x="20"  y="138" text-anchor="end">query 2</text>
+            <text x="20"  y="208" text-anchor="end">query 3</text>
+          </g>
+          <!-- 3x3 cells with gradient fills -->
+          <g stroke="#1a4d6b" stroke-width="1">
+            <rect x="30"  y="40"  width="60" height="60" fill="#2a6f97"/>
+            <rect x="100" y="40"  width="60" height="60" fill="#fbf8f3"/>
+            <rect x="170" y="40"  width="60" height="60" fill="#fbf8f3"/>
+            <rect x="30"  y="110" width="60" height="60" fill="#9bbed4"/>
+            <rect x="100" y="110" width="60" height="60" fill="#2a6f97"/>
+            <rect x="170" y="110" width="60" height="60" fill="#fbf8f3"/>
+            <rect x="30"  y="180" width="60" height="60" fill="#cddee9"/>
+            <rect x="100" y="180" width="60" height="60" fill="#7da9c2"/>
+            <rect x="170" y="180" width="60" height="60" fill="#2a6f97"/>
+          </g>
+          <text x="280" y="125" font-family="Georgia, serif" font-size="12" fill="#4a4a4a">darker = larger weight</text>
+        </svg>
+        <figcaption>A causal self-attention pattern. Each row sums to 1; entries above the diagonal are zero.</figcaption>
+      </figure>
+    </section>
+
+    <section id="cost">
+      <h2>Cost</h2>
+      <p>
+        Computing the full $n \times n$ score matrix is $\mathcal{O}(n^2 d)$ in time and memory. That's the headline drawback of transformers on very long sequences: a $32{,}000$-token document produces a billion-entry attention matrix per layer per head. A great deal of recent research (FlashAttention, sparse attention, linear attention, sliding-window attention) attacks this scaling.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>What are the three roles a token plays in self-attention?</li>
+        <li>Why divide the dot products by $\sqrt{d_k}$?</li>
+        <li>Why does the softmax in attention go along rows, not the whole matrix?</li>
+        <li>What is a causal mask, and where is it used?</li>
+        <li>What does multi-head attention buy you that a single big head doesn't?</li>
+      </ol>
+      <p>
+        Answers: query (what am I looking for), key (what do I match), and value (what I contribute when matched). To keep score variance from growing with $d_k$ and saturating the softmax. Each row is one query's distribution over keys; rows must independently sum to 1. A mask that zeroes attention to "future" positions, used in decoders / LMs to prevent peeking ahead. Multiple heads can attend to multiple kinds of relationships in parallel; one big head has to cram everything into one similarity space.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 13 complete.</strong>
+      <span class="next-link">Next: <a href="14-transformers.html">Chapter 14 — Transformers →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

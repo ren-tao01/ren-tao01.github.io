@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 4 · Multivariable &amp; Gradients — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="4">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 4 of 14</p>
+    <h1>Multivariable &amp; Gradients</h1>
+    <p><em>Functions of many variables. Partial derivatives. The gradient — a vector that points in the direction of steepest increase. The chain rule when everything is a vector.</em></p>
+
+    <section id="why-multi">
+      <h2>Why we need this</h2>
+      <p>
+        The loss of a neural network depends on millions of parameters at once. We need calculus that works on a function $L(w_1, w_2, \ldots, w_n)$ — a single number that depends on a long list of inputs. The single-variable derivative from Chapter 3 still applies; we just have to apply it carefully, one input at a time.
+      </p>
+    </section>
+
+    <section id="partial-derivatives">
+      <h2>Partial derivatives</h2>
+      <p>
+        Let $f(x, y) = x^2 + 3xy + y^3$. To compute the <strong>partial derivative</strong> of $f$ with respect to $x$, we treat every other variable as a constant and differentiate as usual:
+      </p>
+      $$ \frac{\partial f}{\partial x} = 2x + 3y. $$
+      <p>
+        Likewise, for the partial with respect to $y$:
+      </p>
+      $$ \frac{\partial f}{\partial y} = 3x + 3y^2. $$
+      <p>
+        The curly $\partial$ is read "partial." It's just a reminder that the function has other variables you are deliberately holding fixed.
+      </p>
+      <div class="callout intuition">
+        <div class="callout-title">Intuition</div>
+        <p>The partial $\partial f / \partial x$ at a point $(x_0, y_0)$ tells you: <em>if I freeze $y$ at $y_0$ and slide $x$ a tiny bit, how fast does $f$ change?</em> Slice the surface $f$ with a vertical plane parallel to the $x$-axis; the partial is the slope of the resulting curve.</p>
+      </div>
+    </section>
+
+    <section id="gradient">
+      <h2>The gradient</h2>
+      <p>
+        Bundle all the partials into a single vector and you get the <strong>gradient</strong>:
+      </p>
+      $$ \nabla f \;=\; \begin{bmatrix} \partial f / \partial x_1 \\ \partial f / \partial x_2 \\ \vdots \\ \partial f / \partial x_n \end{bmatrix}. $$
+      <p>
+        This is a vector-valued thing: at every point in the input space it is a vector with the same dimension as the input. Two facts make it indispensable.
+      </p>
+      <ol>
+        <li>The gradient points in the direction of <strong>steepest increase</strong> of $f$. There is no other direction in which $f$ grows faster.</li>
+        <li>Its length tells you <em>how fast</em> $f$ grows along that steepest direction.</li>
+      </ol>
+      <p>
+        So the negative gradient, $-\nabla f$, points in the direction of steepest <em>decrease</em>. That is exactly what we want when we are trying to drive a loss down. Gradient descent in Chapter 7 is one short formula:
+      </p>
+      $$ \mathbf{w}_{\text{new}} \;=\; \mathbf{w}_{\text{old}} \;-\; \eta\, \nabla L(\mathbf{w}_{\text{old}}), $$
+      <p>
+        where $\eta$ is a small positive learning rate. Take a small step downhill; repeat.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 560 320" width="560" aria-labelledby="fig-gradient-title" role="img">
+          <title id="fig-gradient-title">A contour plot of a bowl-shaped function with gradient and negative-gradient arrows</title>
+          <defs>
+            <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#c97b3c"/>
+            </marker>
+            <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b8c3e"/>
+            </marker>
+            <marker id="arrLbl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a4a4a"/>
+            </marker>
+          </defs>
+
+          <!-- contour ellipses centered at (260,160) -->
+          <g fill="none" stroke="#2a6f97" stroke-width="1.4">
+            <ellipse cx="260" cy="160" rx="36"  ry="20"/>
+            <ellipse cx="260" cy="160" rx="72"  ry="40"/>
+            <ellipse cx="260" cy="160" rx="108" ry="60"/>
+            <ellipse cx="260" cy="160" rx="144" ry="80"/>
+            <ellipse cx="260" cy="160" rx="180" ry="100"/>
+          </g>
+
+          <!-- center marker -->
+          <circle cx="260" cy="160" r="2.5" fill="#2a6f97"/>
+
+          <!-- contour-of-f label, placed in clear space at top-left, with leader to outermost ellipse -->
+          <text x="40" y="32" font-family="Georgia, serif" font-size="13" fill="#2a6f97">contours of f (level sets)</text>
+          <line x1="120" y1="42" x2="118" y2="68" stroke="#4a4a4a" stroke-width="1" marker-end="url(#arrLbl)"/>
+
+          <!-- "minimum" label for the center, in clear space below-left -->
+          <text x="40" y="298" font-family="Georgia, serif" font-size="13" fill="#2a6f97">minimum of f</text>
+          <line x1="130" y1="290" x2="252" y2="166" stroke="#4a4a4a" stroke-width="1" marker-end="url(#arrLbl)"/>
+
+          <!-- the point P -->
+          <circle cx="360" cy="210" r="5" fill="#1a1a1a"/>
+          <text x="358" y="227" font-family="Georgia, serif" font-size="13" font-weight="bold">P</text>
+
+          <!-- gradient arrow at P, pointing outward (away from center) -->
+          <line x1="360" y1="210" x2="430" y2="245" stroke="#c97b3c" stroke-width="2.5" marker-end="url(#arr2)"/>
+          <text x="438" y="252" font-family="Georgia, serif" font-size="14" fill="#c97b3c" font-weight="bold">∇f</text>
+          <text x="438" y="270" font-family="Georgia, serif" font-size="12" fill="#c97b3c">(uphill)</text>
+
+          <!-- negative gradient at P, toward center -->
+          <line x1="360" y1="210" x2="290" y2="175" stroke="#5b8c3e" stroke-width="2.5" marker-end="url(#arr3)"/>
+          <text x="288" y="200" text-anchor="end" font-family="Georgia, serif" font-size="14" fill="#5b8c3e" font-weight="bold">−∇f</text>
+          <text x="288" y="216" text-anchor="end" font-family="Georgia, serif" font-size="12" fill="#5b8c3e">(downhill)</text>
+        </svg>
+        <figcaption>Contours are level sets of $f$. The gradient is perpendicular to the contour and points outward (uphill). Its negative is the direction we step in gradient descent.</figcaption>
+      </figure>
+    </section>
+
+    <section id="why-perpendicular">
+      <h2>Why the gradient is perpendicular to contours</h2>
+      <p>
+        A <strong>contour</strong> (level set) of $f$ is a curve where $f$ stays constant. If you walk along a contour, $f$ doesn't change — its derivative along the walk is zero. The gradient $\nabla f$ tells you the direction along which $f$ changes fastest. A direction with zero change must be perpendicular to a direction with maximum change. Hence: gradients sit at right angles to contours.
+      </p>
+      <p>
+        This is also why "steepest descent" doesn't trace a contour — it crosses contours at right angles, dropping in $f$ as fast as possible.
+      </p>
+    </section>
+
+    <section id="multivariable-chain-rule">
+      <h2>The multivariable chain rule</h2>
+      <p>
+        Single-variable: if $y = f(g(x))$, then $\dfrac{dy}{dx} = f'(g(x))\, g'(x)$.
+      </p>
+      <p>
+        What if $y = f(u, v)$ and both $u$ and $v$ depend on $x$? You add up the contributions through each path:
+      </p>
+      $$ \frac{dy}{dx} = \frac{\partial f}{\partial u}\, \frac{du}{dx} + \frac{\partial f}{\partial v}\, \frac{dv}{dx}. $$
+      <p>
+        And if $u, v$ each depend on several variables $x_1, \ldots, x_m$? You get one such equation per $x_i$, with partials throughout:
+      </p>
+      $$ \frac{\partial y}{\partial x_i} = \frac{\partial f}{\partial u}\, \frac{\partial u}{\partial x_i} + \frac{\partial f}{\partial v}\, \frac{\partial v}{\partial x_i}. $$
+
+      <div class="callout">
+        <div class="callout-title">Read this twice</div>
+        <p>The multivariable chain rule says: <em>for each input variable, sum over all paths through which it influences the output</em>. Each path contributes a product of partials, one per link. Backpropagation is exactly this rule, scaled up to a network of paths.</p>
+      </div>
+    </section>
+
+    <section id="jacobians">
+      <h2>Jacobians</h2>
+      <p>
+        Now consider a function $\mathbf{f} : \mathbb{R}^n \to \mathbb{R}^m$ — input is a vector, output is a vector. We have $m$ output components, each depending on $n$ input components. Stack all the partials in a matrix:
+      </p>
+      $$ \mathbf{J}_{\mathbf{f}} = \begin{bmatrix}
+        \partial f_1 / \partial x_1 & \cdots & \partial f_1 / \partial x_n \\
+        \vdots & \ddots & \vdots \\
+        \partial f_m / \partial x_1 & \cdots & \partial f_m / \partial x_n
+      \end{bmatrix} \in \mathbb{R}^{m \times n}. $$
+      <p>
+        That's the <strong>Jacobian matrix</strong>. Row $i$ is the gradient of the $i$-th output (transposed); column $j$ tells you how all outputs depend on $x_j$. The vector chain rule reads neatly as a matrix product: if $\mathbf{y} = \mathbf{f}(\mathbf{x})$ and $\mathbf{z} = \mathbf{g}(\mathbf{y})$, then
+      </p>
+      $$ \mathbf{J}_{\mathbf{g} \circ \mathbf{f}}(\mathbf{x}) \;=\; \mathbf{J}_{\mathbf{g}}(\mathbf{y}) \cdot \mathbf{J}_{\mathbf{f}}(\mathbf{x}). $$
+      <p>
+        Notice the order: outer Jacobian on the left, inner Jacobian on the right. The matrix multiplication enforces the shape constraints automatically.
+      </p>
+
+      <h3 id="jacobian-example">Worked example</h3>
+      <p>
+        Let $\mathbf{y} = \mathbf{A}\mathbf{x}$ where $\mathbf{A}$ is a fixed matrix. The $i$-th component is $y_i = \sum_j A_{ij} x_j$, so $\partial y_i / \partial x_j = A_{ij}$. The Jacobian is just $\mathbf{A}$ itself:
+      </p>
+      $$ \mathbf{J}_{\mathbf{y}}(\mathbf{x}) = \mathbf{A}. $$
+      <p>
+        Linear functions are their own derivatives. (This is the matrix version of "the derivative of $mx + b$ is $m$.")
+      </p>
+    </section>
+
+    <section id="gradient-of-loss">
+      <h2>What the gradient of the loss looks like</h2>
+      <p>
+        The loss $L$ takes the parameters $\mathbf{w}$ and returns a single number. Its gradient $\nabla_{\mathbf{w}} L$ is therefore a vector of the same shape as $\mathbf{w}$, one partial derivative per parameter. If your model has 175 billion parameters, the gradient is a 175-billion-dimensional vector — a structured object, but each component is just one partial.
+      </p>
+      <p>
+        Two practical points carry forward:
+      </p>
+      <ul>
+        <li>The gradient lives in the same space as the parameters. You can <em>add</em> a small multiple of $-\nabla L$ to the parameters; that's the update step.</li>
+        <li>To compute the gradient efficiently, we apply the chain rule layer by layer, in reverse. That algorithm is backpropagation.</li>
+      </ul>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>If $f(x,y) = x^2 y$, what are $\partial f/\partial x$ and $\partial f/\partial y$?</li>
+        <li>What is $\nabla f$ for the function $f(x,y) = \tfrac12(x^2 + y^2)$?</li>
+        <li>Why is $-\nabla L$ the right direction for "downhill"?</li>
+        <li>If $\mathbf{y} = \mathbf{A}\mathbf{x} + \mathbf{b}$, what is $\partial \mathbf{y} / \partial \mathbf{x}$?</li>
+        <li>Two functions composed; their Jacobians multiply. In what order?</li>
+      </ol>
+      <p>
+        Answers: $2xy$ and $x^2$; $\nabla f = (x, y)$ — a vector pointing radially outward from the origin; because $\nabla L$ is uphill, its negative is downhill, the steepest downhill at that; the Jacobian is $\mathbf{A}$; outer first, then inner: $\mathbf{J}_{\mathbf{g}}(\mathbf{f}(\mathbf{x})) \, \mathbf{J}_{\mathbf{f}}(\mathbf{x})$.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 4 complete.</strong>
+      <span class="next-link">Next: <a href="05-probability-and-information.html">Chapter 5 — Probability &amp; Information →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

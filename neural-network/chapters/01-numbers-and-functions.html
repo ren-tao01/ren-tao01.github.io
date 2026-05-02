@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 1 · Numbers &amp; Functions — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="1">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 1 of 14</p>
+    <h1>Numbers &amp; Functions</h1>
+    <p><em>Where we start: what a number actually is, what a function actually does, and why the exponential and logarithm are about to be everywhere.</em></p>
+
+    <section id="why-start-here">
+      <h2>Why we start here</h2>
+      <p>
+        A neural network is a long stack of arithmetic — multiplications, additions, and a handful of nonlinear functions — that together compute a useful thing. To understand it, we don't need anything mystical. We need to be very comfortable with three plain ideas: numbers, functions, and the way functions combine. This chapter is the absolute foundation. If you remember it cold, every chapter that follows will feel familiar.
+      </p>
+      <div class="callout intuition">
+        <div class="callout-title">Intuition</div>
+        <p>Think of a neural network as a Rube Goldberg machine. Each piece is small and easy. The reason the whole thing is impressive is that there are <em>a lot</em> of pieces, hooked together in a clever order. We're going to build the smallest pieces first.</p>
+      </div>
+    </section>
+
+    <section id="numbers">
+      <h2>Numbers</h2>
+      <p>
+        We will work almost entirely with <strong>real numbers</strong>: things like $0$, $-3$, $\tfrac{1}{2}$, $\sqrt{2}$, $\pi$. The set of all real numbers is written $\mathbb{R}$. You can imagine $\mathbb{R}$ as the unbroken number line stretching from $-\infty$ to $+\infty$.
+      </p>
+      <p>
+        Two facts about real numbers will matter constantly:
+      </p>
+      <ul>
+        <li><strong>They are ordered.</strong> Given any two of them, one is larger or they are equal. This is what lets us speak of "going up" or "going down."</li>
+        <li><strong>They are continuous.</strong> Between any two real numbers there is another real number. We can talk about arbitrarily small differences. This is what makes derivatives meaningful in Chapter 3.</li>
+      </ul>
+      <p>
+        We will rarely need complex numbers, irrationality theorems, or anything more exotic. Treat $\mathbb{R}$ as the playground.
+      </p>
+    </section>
+
+    <section id="variables">
+      <h2>Variables</h2>
+      <p>
+        A <strong>variable</strong> is a name we attach to a number whose value we either don't know yet or want to leave general. In algebra textbooks the variable is usually $x$. In machine learning it might be $w$ for "weight," $b$ for "bias," $\theta$ for "the parameters," or $\eta$ for "the learning rate." The letter is just a label. What matters is whether the value is allowed to change and what it stands for.
+      </p>
+      <p>
+        It is useful to distinguish three roles a variable can play:
+      </p>
+      <ul>
+        <li><strong>Inputs</strong> — what we feed into a function. Often called $x$.</li>
+        <li><strong>Outputs</strong> — what comes out. Often called $y$ or $\hat{y}$.</li>
+        <li><strong>Parameters</strong> — settings inside a function that we tune. Often called $w$ and $b$.</li>
+      </ul>
+      <p>
+        A neural network is, ultimately, a function with hundreds of millions of parameters. We don't have to memorize them. We just have to know they exist and that we can adjust them.
+      </p>
+    </section>
+
+    <section id="functions">
+      <h2>Functions</h2>
+      <p>
+        A <strong>function</strong> is a rule that takes an input and returns exactly one output. We write $f : A \to B$ to mean $f$ accepts inputs from set $A$ and produces outputs in set $B$. For most of this site, $A$ and $B$ are $\mathbb{R}$ (single numbers) or $\mathbb{R}^n$ (lists of $n$ numbers — see Chapter 2).
+      </p>
+      <p>
+        Three ways to specify a function — each one is the same idea expressed differently:
+      </p>
+      <ol>
+        <li><strong>By formula.</strong> $f(x) = 3x + 2$.</li>
+        <li><strong>By table.</strong> A list of input/output pairs.</li>
+        <li><strong>By picture.</strong> The graph: a curve drawn in a plane where the horizontal axis is the input and the vertical axis is the output.</li>
+      </ol>
+      <p>
+        The picture is how we will build intuition; the formula is how we will compute; the table will appear when we do worked numerical examples.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 280" width="480" aria-labelledby="fig-function-graph-title" role="img">
+          <title id="fig-function-graph-title">A simple line and curve plotted on the same axes</title>
+          <!-- axes -->
+          <line x1="40" y1="240" x2="460" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <!-- ticks -->
+          <g font-family="Georgia, serif" font-size="11" fill="#4a4a4a">
+            <text x="40"  y="258" text-anchor="middle">0</text>
+            <text x="145" y="258" text-anchor="middle">1</text>
+            <text x="250" y="258" text-anchor="middle">2</text>
+            <text x="355" y="258" text-anchor="middle">3</text>
+            <text x="460" y="258" text-anchor="middle">4</text>
+            <text x="30"  y="244" text-anchor="end">0</text>
+            <text x="30"  y="184" text-anchor="end">2</text>
+            <text x="30"  y="124" text-anchor="end">4</text>
+            <text x="30"  y="64"  text-anchor="end">6</text>
+          </g>
+          <!-- line f(x)=2x -->
+          <line x1="40" y1="240" x2="460" y2="0" stroke="#2a6f97" stroke-width="2.5"/>
+          <text x="430" y="40" fill="#2a6f97" font-family="Georgia, serif" font-size="14">y = 2x</text>
+          <!-- parabola y=(x/2)^2 from x=0..4 sampled densely.
+               cx = 40 + 105*x; cy = 240 - 29*y where y = (x/2)^2. -->
+          <polyline fill="none" stroke="#c97b3c" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    points="40,240 92.5,238.2 145,232.7 197.5,223.7 250,211.0 302.5,194.7 355,174.8 407.5,151.2 460,124.0"/>
+          <text x="380" y="155" fill="#c97b3c" font-family="Georgia, serif" font-size="14">y = (x/2)²</text>
+          <text x="250" y="278" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">x</text>
+          <text x="14"  y="130" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">y</text>
+        </svg>
+        <figcaption>A linear function and a parabola — same axes, very different shapes.</figcaption>
+      </figure>
+    </section>
+
+    <section id="composing-functions">
+      <h2>Composing functions</h2>
+      <p>
+        If $f$ takes the output of $g$ as its input, we say "$f$ composed with $g$," written
+      </p>
+      $$ (f \circ g)(x) \;=\; f\bigl(g(x)\bigr). $$
+      <p>
+        This is innocent in symbols and enormous in consequence. A neural network is nothing but a long chain of compositions: layer one feeds layer two feeds layer three, and so on. The chain rule of calculus (Chapter 3) is the tool that lets us take a derivative through that chain. <strong>Memorize the shape of composition now</strong>: an outer function applied to the result of an inner function.
+      </p>
+      <p>
+        Quick example: let $g(x) = x + 1$ and $f(u) = u^2$. Then
+      </p>
+      $$ (f \circ g)(x) = f(x+1) = (x+1)^2 = x^2 + 2x + 1. $$
+      <p>
+        Notice the order: $g$ runs first, $f$ runs second. The notation $f \circ g$ reads <em>right to left</em>, like a stack of operations.
+      </p>
+    </section>
+
+    <section id="exponential">
+      <h2>The exponential function</h2>
+      <p>
+        Out of all the functions we will meet, two non-polynomial ones do the heavy lifting throughout machine learning: the <strong>exponential</strong> and its inverse, the <strong>logarithm</strong>. We need to be friends with both before going further.
+      </p>
+      <p>
+        The exponential function is written $\exp(x)$ or $e^x$, where $e \approx 2.71828\ldots$ is a special constant chosen for a reason we will appreciate in Chapter 3. For now, take these properties as the definition:
+      </p>
+      <ul>
+        <li>$e^0 = 1.$</li>
+        <li>$e^{a+b} = e^a \cdot e^b.$ Adding in the exponent multiplies the values.</li>
+        <li>$e^{-x} = 1 / e^x.$ Negation in the exponent flips to a reciprocal.</li>
+        <li>$e^x > 0$ for every real $x$. The exponential is <em>always positive</em>.</li>
+        <li>$e^x$ grows extremely fast as $x$ increases and shrinks toward $0$ as $x$ decreases.</li>
+      </ul>
+
+      <figure>
+        <svg viewBox="0 0 480 260" width="480" aria-labelledby="fig-exp-title" role="img">
+          <title id="fig-exp-title">Graph of the exponential function</title>
+          <!-- axes: x-axis at canvas y=220 (math y=0); y-axis at canvas x=240 (math x=0).
+               scale: 1 math x-unit = 50 px, 1 math y-unit = 10 px.
+               so x in [-3, 3] -> canvas x in [90, 390]; y in [0, 20] -> canvas y in [220, 20]. -->
+          <line x1="40" y1="220" x2="460" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="240" y1="20" x2="240" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <g stroke="#1a1a1a" stroke-width="1">
+            <line x1="90"  y1="217" x2="90"  y2="223"/>
+            <line x1="190" y1="217" x2="190" y2="223"/>
+            <line x1="290" y1="217" x2="290" y2="223"/>
+            <line x1="390" y1="217" x2="390" y2="223"/>
+            <line x1="237" y1="170" x2="243" y2="170"/>
+            <line x1="237" y1="120" x2="243" y2="120"/>
+            <line x1="237" y1="70"  x2="243" y2="70"/>
+            <line x1="237" y1="20"  x2="243" y2="20"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="11" fill="#4a4a4a">
+            <text x="90"  y="236" text-anchor="middle">-3</text>
+            <text x="190" y="236" text-anchor="middle">-1</text>
+            <text x="290" y="236" text-anchor="middle">1</text>
+            <text x="390" y="236" text-anchor="middle">3</text>
+            <text x="232" y="224" text-anchor="end">0</text>
+            <text x="232" y="174" text-anchor="end">5</text>
+            <text x="232" y="124" text-anchor="end">10</text>
+            <text x="232" y="74"  text-anchor="end">15</text>
+            <text x="232" y="24"  text-anchor="end">20</text>
+          </g>
+          <!-- y = e^x sampled densely from x=-3 to x=3 in steps of 0.2.
+               cx = 240 + 50*x; cy = 220 - 10*e^x. -->
+          <polyline fill="none" stroke="#2a6f97" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    points="90,219.5 100,219.4 110,219.3 120,219.1 130,218.9 140,218.6 150,218.3 160,218.0 170,217.5 180,217.0 190,216.3 200,215.5 210,214.5 220,213.3 230,211.8 240,210.0 250,207.8 260,205.1 270,201.8 280,197.7 290,192.8 300,186.8 310,179.4 320,170.5 330,159.5 340,146.1 350,129.8 360,109.8 370,85.4 380,55.6 390,19.1"/>
+          <text x="100" y="50" fill="#2a6f97" font-family="Georgia, serif" font-size="14">y = eˣ</text>
+        </svg>
+        <figcaption>$e^x$ is positive everywhere, equals $1$ at $x=0$, and explodes upward as $x$ grows.</figcaption>
+      </figure>
+
+      <p>
+        Why does it appear so often? Two reasons we will revisit:
+      </p>
+      <ul>
+        <li>It is the unique function whose <em>rate of change equals itself</em>. Its derivative is $e^x$. (Chapter 3.)</li>
+        <li>It turns sums into products and back, which is exactly what you need to convert "log probabilities of independent things" into "probability of the joint thing." (Chapter 5.)</li>
+      </ul>
+    </section>
+
+    <section id="logarithm">
+      <h2>The logarithm</h2>
+      <p>
+        The logarithm $\ln(x)$ — sometimes written $\log(x)$ in machine-learning code — is the <em>inverse</em> of the exponential. By definition,
+      </p>
+      $$ \ln(e^x) = x, \qquad e^{\ln(x)} = x \;\;\text{for } x > 0. $$
+      <p>
+        Properties that follow immediately, and that we will use constantly:
+      </p>
+      <ul>
+        <li>$\ln(1) = 0$ (because $e^0 = 1$).</li>
+        <li>$\ln(ab) = \ln(a) + \ln(b)$. <em>Logs turn products into sums.</em></li>
+        <li>$\ln(a/b) = \ln(a) - \ln(b)$.</li>
+        <li>$\ln(a^k) = k \ln(a)$.</li>
+        <li>$\ln(x)$ is defined only for $x > 0$. It goes to $-\infty$ as $x \to 0^+$ and slowly upward as $x \to \infty$.</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout-title">Why we use logs in machine learning</div>
+        <p>Probabilities are numbers between $0$ and $1$ — they are easy to multiply but tend to underflow to zero on a computer once you multiply enough of them. Working with $\ln(\text{probability})$ instead turns a long product into a long sum, which is numerically stable and algebraically friendly. This is the entire reason "log-likelihoods" and "cross-entropy" are written with logs in Chapter 5.</p>
+      </div>
+    </section>
+
+    <section id="useful-shapes">
+      <h2>A small zoo of functions you will meet</h2>
+      <p>
+        Beyond plain lines and parabolas, here is the cast that returns later in this site:
+      </p>
+      <ul>
+        <li><strong>Affine</strong>: $f(x) = wx + b$. The basic neuron before any nonlinearity. Two parameters: a slope $w$ and an offset $b$.</li>
+        <li><strong>Sigmoid</strong>: $\sigma(x) = \dfrac{1}{1 + e^{-x}}$. Squashes any real input into the interval $(0,1)$. Built from $e^x$.</li>
+        <li><strong>ReLU</strong>: $\mathrm{ReLU}(x) = \max(0, x)$. Zero for negative inputs, identity for positive ones. Looks like a hockey stick.</li>
+        <li><strong>Quadratic</strong>: $f(x) = x^2$. Used everywhere as a "how wrong are we?" measure.</li>
+      </ul>
+      <p>
+        We will meet these in detail in Chapter 6. For now, just notice: every one of them is a recipe that turns a number into another number.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <p>
+        Before moving on, you should be able to answer these without looking back:
+      </p>
+      <ol>
+        <li>If $f(x) = 2x + 5$ and $g(x) = x - 3$, what is $f(g(2))$?</li>
+        <li>What is $\ln(e^4)$?</li>
+        <li>What is $e^{\ln(7)}$?</li>
+        <li>Without a calculator, is $e^{-2}$ closer to $0$, $1$, or $7$?</li>
+        <li>Why does $\ln(\text{negative number})$ not exist in the real numbers?</li>
+      </ol>
+      <p>
+        Answers, in order: $f(g(2)) = f(-1) = 3$; $\ln(e^4) = 4$; $e^{\ln(7)} = 7$; $e^{-2} \approx 0.135$, closer to $0$; because $e^x$ is always positive, no real $x$ makes $e^x$ negative, so the inverse is undefined there.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 1 complete.</strong>
+      <span class="next-link">Next: <a href="02-linear-algebra.html">Chapter 2 — Linear Algebra →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

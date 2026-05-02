@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 7 · Loss &amp; Gradient Descent — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="7">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 7 of 14</p>
+    <h1>Loss &amp; Gradient Descent</h1>
+    <p><em>How wrong are we? How do we get less wrong? Two losses (squared error and cross-entropy), one update rule, and a numerical example you can do by hand.</em></p>
+
+    <section id="loss-idea">
+      <h2>What a loss function is</h2>
+      <p>
+        A <strong>loss function</strong> is a single number that measures how badly a model's prediction differs from the truth. Smaller is better, with $0$ meaning "perfect on this example." Once we have a loss, training reduces to a single goal: <em>minimize the average loss across the training data by adjusting the parameters $\mathbf{w}$.</em>
+      </p>
+      <p>
+        Two losses cover almost everything we will do in this site:
+      </p>
+      <ul>
+        <li><strong>Mean squared error</strong> for regression (continuous outputs).</li>
+        <li><strong>Cross-entropy</strong> for classification (probabilities over discrete classes).</li>
+      </ul>
+    </section>
+
+    <section id="mse">
+      <h2>Mean squared error</h2>
+      <p>
+        Given predictions $\hat{y}_i$ and true values $y_i$ for $N$ examples, the mean squared error is
+      </p>
+      $$ L_{\mathrm{MSE}} \;=\; \frac{1}{N} \sum_{i=1}^{N} (\hat{y}_i - y_i)^2. $$
+      <p>
+        Why squared, not absolute value? Three reasons:
+      </p>
+      <ul>
+        <li>It is differentiable everywhere (no kink at zero).</li>
+        <li>It penalizes large errors disproportionately, which often matches our intuition: missing by $10$ is much worse than missing by $1$.</li>
+        <li>Under the assumption of Gaussian noise around the true value, minimizing MSE is exactly maximum likelihood. (We will not use this fact directly; it is reassuring that the loss is principled.)</li>
+      </ul>
+      <p>
+        The factor $\tfrac{1}{N}$ keeps the loss comparable across dataset sizes. Many texts also include $\tfrac{1}{2}$ in front so that derivatives come out tidy; that is just a convention.
+      </p>
+    </section>
+
+    <section id="cross-entropy-loss">
+      <h2>Cross-entropy loss</h2>
+      <p>
+        For a single classification example with $C$ classes, true label $y \in \{1,\ldots,C\}$, and predicted probabilities $\hat{y}_1, \ldots, \hat{y}_C$,
+      </p>
+      $$ L_{\mathrm{CE}} \;=\; -\ln \hat{y}_y \;=\; -\sum_{k=1}^{C} \mathbb{1}[k = y]\, \ln \hat{y}_k. $$
+      <p>
+        That second form (with the indicator $\mathbb{1}[\cdot]$) is what you see written when $y$ is a one-hot vector. We unpacked the meaning in Chapter 5: cross-entropy is the negative log-likelihood of the correct class. Probability $1$ on the correct class gives loss $0$; probability close to $0$ gives loss exploding to $+\infty$.
+      </p>
+      <p>
+        For a whole batch of $N$ examples, average:
+      </p>
+      $$ L_{\mathrm{CE}} \;=\; -\frac{1}{N} \sum_{i=1}^{N} \ln \hat{y}_{i, y_i}. $$
+    </section>
+
+    <section id="loss-surface">
+      <h2>The loss surface</h2>
+      <p>
+        Imagine plotting $L(\mathbf{w})$ — the loss as a function of all parameters. With one parameter it's a curve. With two it's a surface — hills and valleys above the parameter plane. With millions, your mental picture has to remain abstract, but the words still work: there are valleys (low loss) and ridges (high loss), and we want to slide downhill toward a valley floor.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 260" width="480" aria-labelledby="fig-loss-title" role="img">
+          <title id="fig-loss-title">A loss curve in one dimension with a gradient descent trail</title>
+          <line x1="40" y1="220" x2="460" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <!-- bowl curve -->
+          <path d="M 50 60 Q 250 280, 460 60" fill="none" stroke="#2a6f97" stroke-width="2.5"/>
+          <!-- gradient descent trail: start at right, step toward minimum -->
+          <g fill="#c97b3c">
+            <circle cx="420" cy="92"  r="5"/>
+            <circle cx="370" cy="135" r="5"/>
+            <circle cx="320" cy="175" r="5"/>
+            <circle cx="280" cy="200" r="5"/>
+            <circle cx="250" cy="212" r="5"/>
+          </g>
+          <g stroke="#c97b3c" stroke-width="1.5" fill="none">
+            <path d="M 420 92 Q 395 110, 370 135"/>
+            <path d="M 370 135 Q 345 158, 320 175"/>
+            <path d="M 320 175 Q 300 188, 280 200"/>
+            <path d="M 280 200 Q 265 207, 250 212"/>
+          </g>
+          <text x="430" y="80" fill="#c97b3c" font-family="Georgia, serif" font-size="13">start</text>
+          <text x="248" y="232" fill="#c97b3c" font-family="Georgia, serif" font-size="13" text-anchor="middle">minimum</text>
+          <text x="248" y="40" fill="#2a6f97" font-family="Georgia, serif" font-size="14" text-anchor="middle">L(w)</text>
+          <text x="464" y="244" fill="#4a4a4a" font-family="Georgia, serif" font-size="12" text-anchor="end">w</text>
+        </svg>
+        <figcaption>Gradient descent in one dimension: each step moves us toward smaller $L$ by an amount proportional to the slope.</figcaption>
+      </figure>
+    </section>
+
+    <section id="gradient-descent">
+      <h2>The update rule</h2>
+      <p>
+        From Chapter 4 we know $\nabla L(\mathbf{w})$ points uphill. We want downhill, so we step in the opposite direction:
+      </p>
+      $$ \boxed{\;\mathbf{w}_{\text{new}} \;=\; \mathbf{w}_{\text{old}} \;-\; \eta\, \nabla L(\mathbf{w}_{\text{old}}).\;} $$
+      <p>
+        That's it. That is the entire learning algorithm. Everything else in the next dozen chapters is a way to compute the gradient on the right efficiently, or a way to make the step on the left more reliable.
+      </p>
+      <p>
+        $\eta > 0$ is the <strong>learning rate</strong>. Too small and learning crawls. Too large and you overshoot the valley and bounce around — or diverge entirely. Chapter 10 discusses how to choose and adapt it.
+      </p>
+    </section>
+
+    <section id="hand-traced">
+      <h2>A worked one-dimensional example</h2>
+      <p>
+        Let's minimize $L(w) = (w - 3)^2$ by hand. The optimal answer is obviously $w = 3$ (the loss is zero there). We pretend we don't know that and let gradient descent find it.
+      </p>
+      <p>
+        Compute the gradient (just an ordinary derivative here): $L'(w) = 2(w - 3)$. Pick $\eta = 0.1$ and start at $w_0 = 0$.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>step</th><th>$w$</th><th>$L(w)$</th><th>$L'(w)$</th><th>$\eta L'(w)$</th><th>$w_\text{new}$</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>0.000</td><td>9.000</td><td>-6.000</td><td>-0.600</td><td>0.600</td></tr>
+          <tr><td>1</td><td>0.600</td><td>5.760</td><td>-4.800</td><td>-0.480</td><td>1.080</td></tr>
+          <tr><td>2</td><td>1.080</td><td>3.686</td><td>-3.840</td><td>-0.384</td><td>1.464</td></tr>
+          <tr><td>3</td><td>1.464</td><td>2.359</td><td>-3.072</td><td>-0.307</td><td>1.771</td></tr>
+          <tr><td>4</td><td>1.771</td><td>1.510</td><td>-2.458</td><td>-0.246</td><td>2.017</td></tr>
+          <tr><td>5</td><td>2.017</td><td>0.966</td><td>-1.966</td><td>-0.197</td><td>2.214</td></tr>
+          <tr><td>10</td><td>2.678</td><td>0.104</td><td>-0.644</td><td>-0.064</td><td>2.742</td></tr>
+          <tr><td>20</td><td>2.965</td><td>0.001</td><td>-0.069</td><td>-0.007</td><td>2.972</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        We start far from the minimum and our steps are big. As we approach $w = 3$, the gradient gets smaller, our steps shrink automatically, and we glide into place. The loss drops from $9$ to about $0.001$ in twenty steps. That self-slowing-near-the-minimum behavior is gradient descent's nicest property.
+      </p>
+
+      <div class="callout warn">
+        <div class="callout-title">A learning-rate cautionary tale</div>
+        <p>Try the same example with $\eta = 1.1$. The update becomes $w \to w - 2.2(w-3) = -1.2w + 6.6$. Equivalently, $(w_\text{new} - 3) = -1.2 (w - 3)$ — the distance to the minimum is multiplied by $-1.2$ at every step, so it grows.</p>
+        <p>Concretely, starting at $w_0 = 0$:</p>
+        <ul>
+          <li>$w_1 = -1.2(0) + 6.6 = 6.6$, &nbsp; $L = 12.96$.</li>
+          <li>$w_2 = -1.2(6.6) + 6.6 = -1.32$, &nbsp; $L \approx 18.66$.</li>
+          <li>$w_3 = -1.2(-1.32) + 6.6 = 8.184$, &nbsp; $L \approx 26.87$.</li>
+        </ul>
+        <p>Each step ricochets to the opposite side of the minimum and lands further away. The loss grows by a factor of $1.44$ per step. The right learning rate matters.</p>
+      </div>
+    </section>
+
+    <section id="batch-stochastic">
+      <h2>Batch, stochastic, and mini-batch gradient descent</h2>
+      <p>
+        Real datasets have millions of examples. Computing the exact gradient $\nabla L$ over all of them at every step is wasteful. Three flavors:
+      </p>
+      <ul>
+        <li><strong>Batch GD</strong>: use the entire dataset per step. Accurate gradient, very slow.</li>
+        <li><strong>Stochastic GD (SGD)</strong>: use one example per step. Cheap and noisy. Good early; oscillates near the minimum.</li>
+        <li><strong>Mini-batch SGD</strong>: use a small batch (32 to 512 examples) per step. Best of both worlds; this is what everyone uses in practice.</li>
+      </ul>
+      <p>
+        We will keep saying "gradient descent" and assume mini-batch unless noted.
+      </p>
+    </section>
+
+    <section id="local-minima">
+      <h2>Local versus global minima</h2>
+      <p>
+        Gradient descent only goes downhill. If the loss surface has multiple valleys, GD will find a valley near where you started — not necessarily the deepest one. For convex losses (a single bowl) this distinction does not matter. For deep neural networks it does, in principle, but practical loss surfaces have a remarkable property: many local minima are roughly as good as the best one. We won't prove that. Just be aware that GD's guarantee is "local," and that this is fine in practice.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>Compute one GD step. $L(w) = (w - 5)^2$, $w = 0$, $\eta = 0.5$. What is $w_{\text{new}}$?</li>
+        <li>Why does cross-entropy explode when the model puts probability $\to 0$ on the correct class?</li>
+        <li>Why does GD slow down naturally near a minimum?</li>
+        <li>What does the learning rate trade off?</li>
+        <li>What is the difference between SGD and mini-batch SGD?</li>
+      </ol>
+      <p>
+        Answers: $L'(0) = -10$; step $= -0.5 \cdot -10 = 5$; $w_\text{new} = 5$ — straight to the minimum (a coincidence: $\eta = 0.5$ is exactly right for this quadratic). Cross-entropy is $-\ln \hat{y}$; as $\hat{y} \to 0$, $-\ln \hat{y} \to \infty$. Because the gradient itself shrinks. Speed of progress versus risk of overshoot. Mini-batch averages gradients across a small set of examples instead of one — less noisy, still cheap.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 7 complete.</strong>
+      <span class="next-link">Next: <a href="08-mlp-forward-pass.html">Chapter 8 — MLP Forward Pass →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

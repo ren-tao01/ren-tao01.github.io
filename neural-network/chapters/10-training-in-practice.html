@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 10 · Training in Practice — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="10">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 10 of 14</p>
+    <h1>Training in Practice</h1>
+    <p><em>The tricks that make plain gradient descent actually converge: weight initialization, momentum, Adam, weight decay, dropout, and batch normalization.</em></p>
+
+    <section id="why-tricks">
+      <h2>Why we need anything beyond plain GD</h2>
+      <p>
+        With the four backprop equations and the gradient-descent update rule we have a complete training algorithm. In practice, applying it naively to a deep network often fails: gradients vanish, gradients explode, the loss plateaus, or the model memorizes the training data and fails on new examples. This chapter is a tour of the small modifications that fix each of these in turn.
+      </p>
+    </section>
+
+    <section id="initialization">
+      <h2>Weight initialization</h2>
+      <p>
+        At step zero, the weights are random. <em>How</em> random matters more than you might think.
+      </p>
+      <p>
+        Suppose you set every weight to the same value, say zero. Then every neuron in a layer computes the same thing, every neuron's gradient is the same, every neuron's update is the same — and the layer is forever stuck behaving as if it had a single neuron. Symmetry is fatal. We need random initialization to break it.
+      </p>
+      <p>
+        But how big should the random values be? If the weights are too large, activations grow as you go deeper, eventually saturating or overflowing. If too small, activations shrink to zero and gradients carry no signal. Two practical recipes that get the variance right:
+      </p>
+      <ul>
+        <li><strong>Xavier / Glorot</strong> (for tanh, sigmoid): draw weights from a distribution with variance $\dfrac{2}{n_\text{in} + n_\text{out}}$.</li>
+        <li><strong>He / Kaiming</strong> (for ReLU): variance $\dfrac{2}{n_\text{in}}$.</li>
+      </ul>
+      <p>
+        Why $2/n_\text{in}$ for ReLU? Because ReLU sets half its inputs to zero. Doubling the variance restores the expected output variance. Both formulas come from the same calculation: ask "what variance keeps the expected magnitude of activations and gradients constant from layer to layer?" and solve.
+      </p>
+      <p>
+        Biases are usually initialized to zero; they don't suffer from the symmetry problem because the weights they connect to are already random.
+      </p>
+    </section>
+
+    <section id="momentum">
+      <h2>Momentum</h2>
+      <p>
+        Plain SGD is myopic: each step looks only at the current gradient. Imagine descending a long, narrow valley. The gradient mostly points across the valley, so SGD zigzags wildly, with each side of the valley canceling the other. It moves slowly along the valley floor.
+      </p>
+      <p>
+        <strong>Momentum</strong> introduces a velocity vector $\mathbf{v}$ that accumulates past gradients with a decay factor $\beta \in [0, 1)$:
+      </p>
+      $$ \mathbf{v}_t = \beta\, \mathbf{v}_{t-1} + \nabla L(\mathbf{w}_{t-1}), \qquad \mathbf{w}_t = \mathbf{w}_{t-1} - \eta\, \mathbf{v}_t. $$
+      <p>
+        Cross-valley oscillations cancel in the running average, while consistent along-valley signal accumulates. Effective momentum coefficient is typically $\beta = 0.9$. Convergence is markedly faster than plain SGD with no extra computation.
+      </p>
+    </section>
+
+    <section id="adam">
+      <h2>Adam</h2>
+      <p>
+        <strong>Adam</strong> (Kingma &amp; Ba, 2014) keeps two running averages — one of gradients, one of squared gradients — and uses them to scale every parameter's update individually:
+      </p>
+      $$ \mathbf{m}_t = \beta_1\, \mathbf{m}_{t-1} + (1-\beta_1)\, \mathbf{g}_t, \qquad \mathbf{v}_t = \beta_2\, \mathbf{v}_{t-1} + (1-\beta_2)\, \mathbf{g}_t^2, $$
+      $$ \hat{\mathbf{m}}_t = \frac{\mathbf{m}_t}{1-\beta_1^t}, \quad \hat{\mathbf{v}}_t = \frac{\mathbf{v}_t}{1-\beta_2^t}, \quad \mathbf{w}_t = \mathbf{w}_{t-1} - \eta\, \frac{\hat{\mathbf{m}}_t}{\sqrt{\hat{\mathbf{v}}_t} + \varepsilon}. $$
+      <p>
+        $\mathbf{g}_t$ is the current gradient, $\mathbf{g}_t^2$ is element-wise square, $\beta_1, \beta_2$ are decay rates (defaults $0.9, 0.999$), and $\varepsilon$ is a tiny constant for numerical stability. The hat-decoration corrects for the fact that the running averages start at zero.
+      </p>
+      <p>
+        The intuition: parameters whose gradients have been consistently large get a smaller effective step; parameters whose gradients have been consistently small get a relatively larger step. Each parameter "feels" its own learning rate. In practice Adam is the default optimizer for deep models and almost always works out of the box.
+      </p>
+    </section>
+
+    <section id="lr-schedule">
+      <h2>Learning-rate schedules</h2>
+      <p>
+        A fixed learning rate is rarely optimal across all of training. Most schedules <em>warm up</em> from a small value, run at a flat peak, and then <em>decay</em> as training progresses. Three popular shapes:
+      </p>
+      <ul>
+        <li><strong>Step decay</strong>: drop $\eta$ by a factor (e.g. $\times 0.1$) at fixed milestones.</li>
+        <li><strong>Cosine</strong>: $\eta_t = \tfrac{\eta_\text{max}}{2}\bigl(1 + \cos(\pi t/T)\bigr)$, gliding smoothly to zero.</li>
+        <li><strong>Linear with warm-up</strong>: ramp up linearly for the first few thousand steps, then linearly decay.</li>
+      </ul>
+      <p>
+        Decay matters because as the loss surface gets shallower near a minimum, the right step size shrinks too. Warm-up matters because Adam's initial estimates of $\mathbf{m}, \mathbf{v}$ are unreliable; a tiny learning rate keeps you out of trouble while they stabilize.
+      </p>
+    </section>
+
+    <section id="regularization">
+      <h2>Regularization, generally</h2>
+      <p>
+        <strong>Overfitting</strong> means the model has memorized the training set and does poorly on data it hasn't seen. Regularization is anything that fights overfitting — biasing the model toward simpler, less specialized solutions. Three of the most useful techniques follow.
+      </p>
+    </section>
+
+    <section id="weight-decay">
+      <h2>Weight decay (L2)</h2>
+      <p>
+        Add a penalty proportional to the squared norm of the weights:
+      </p>
+      $$ L_\text{total}(\mathbf{w}) \;=\; L_\text{data}(\mathbf{w}) \;+\; \frac{\lambda}{2}\, \|\mathbf{w}\|^2. $$
+      <p>
+        $\lambda$ is the regularization strength (often $10^{-4}$ or so). The gradient of the penalty is $\lambda \mathbf{w}$, which adds a term $\lambda \mathbf{w}$ to every gradient. Equivalently, the update rule shrinks each weight a little toward zero on every step:
+      </p>
+      $$ \mathbf{w} \;\leftarrow\; (1 - \eta\lambda)\, \mathbf{w} \;-\; \eta\, \nabla L_\text{data}. $$
+      <p>
+        The "decay" name comes from that multiplicative shrinkage. Empirically, weight decay improves generalization in essentially every setting we have tested it in.
+      </p>
+    </section>
+
+    <section id="dropout">
+      <h2>Dropout</h2>
+      <p>
+        At training time, randomly set a fraction $p$ of activations in a layer to zero on each forward pass. At evaluation time, leave everything in place but scale appropriately. This is <strong>dropout</strong> (Srivastava et al., 2014). Effectively, each minibatch trains a different sparse sub-network; their predictions get averaged at evaluation time.
+      </p>
+      <p>
+        Two ways to think about why this works:
+      </p>
+      <ul>
+        <li>It prevents complex co-adaptation: no single neuron can rely on the presence of any other specific neuron, because that other neuron might be dropped.</li>
+        <li>It is roughly equivalent to ensembling over many sub-networks, which usually improves generalization.</li>
+      </ul>
+      <p>
+        Common dropout rates: $p = 0.1$ to $0.5$, applied to fully-connected layers. Dropout is much less common in modern transformer hidden states (where it can interact poorly with normalization) but still used on attention weights and post-FFN.
+      </p>
+    </section>
+
+    <section id="batchnorm">
+      <h2>Batch normalization</h2>
+      <p>
+        Batch normalization (Ioffe &amp; Szegedy, 2015) is a layer that, at training time, takes a batch of pre-activations $\mathbf{z}$ and standardizes them along the batch axis:
+      </p>
+      $$ \hat{z}_i = \frac{z_i - \mu_\text{batch}}{\sqrt{\sigma^2_\text{batch} + \varepsilon}}, \qquad \tilde{z}_i = \gamma\, \hat{z}_i + \beta. $$
+      <p>
+        $\mu_\text{batch}$ and $\sigma^2_\text{batch}$ are computed over the current mini-batch; $\gamma$ and $\beta$ are learnable scale and shift parameters that let the layer recover the original distribution if needed. At inference time we use running averages of $\mu$ and $\sigma^2$ collected during training.
+      </p>
+      <p>
+        Effects observed in practice:
+      </p>
+      <ul>
+        <li>You can use much higher learning rates without divergence.</li>
+        <li>Sensitivity to initialization scale is greatly reduced.</li>
+        <li>It acts as a mild regularizer (the batch statistics are noisy at training time).</li>
+      </ul>
+      <p>
+        For tasks where batch dimensions are small or unreliable (e.g. RNN sequences, small-batch fine-tuning) we use cousins like <em>layer normalization</em>, which standardizes across the feature dimension rather than the batch dimension. Transformers (Chapter 14) use LayerNorm.
+      </p>
+    </section>
+
+    <section id="train-val-test">
+      <h2>Train, validation, test</h2>
+      <p>
+        Always split your data into three pieces:
+      </p>
+      <ul>
+        <li><strong>Training set</strong> — used by gradient descent.</li>
+        <li><strong>Validation set</strong> — used to choose hyperparameters and decide when to stop training.</li>
+        <li><strong>Test set</strong> — held out, used only at the end, to honestly estimate how the model will perform in the wild.</li>
+      </ul>
+      <p>
+        Tuning on the test set leaks information into the model's choices and inflates its apparent quality. Don't do it.
+      </p>
+    </section>
+
+    <section id="early-stopping">
+      <h2>Early stopping</h2>
+      <p>
+        Track validation loss every epoch. Once it has stopped improving for a while (say five epochs), stop training and roll back to the best-validation checkpoint. This is itself a form of regularization, free of charge.
+      </p>
+    </section>
+
+    <section id="diagnostics">
+      <h2>Diagnostic checklist</h2>
+      <p>
+        When training mysteriously fails, work through this list:
+      </p>
+      <ol>
+        <li>Can you overfit a single mini-batch? If not, your loss, model, or training loop is buggy. Always check this first.</li>
+        <li>Are activations at all layers in a sane range (not all zero, not exploding)?</li>
+        <li>Are gradients flowing — that is, the gradient norm at each layer is meaningfully nonzero?</li>
+        <li>Is the learning rate sane? Try $10\times$ smaller and $10\times$ larger and compare.</li>
+        <li>Are you using normalization (batchnorm/layernorm) on a deep stack?</li>
+        <li>Is the data normalized to zero mean, unit variance (or otherwise reasonable scale)?</li>
+      </ol>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>Why does setting all weights to zero break a network?</li>
+        <li>Why use $2/n_\text{in}$ for ReLU but $2/(n_\text{in}+n_\text{out})$ for tanh?</li>
+        <li>What does momentum buy you over plain SGD?</li>
+        <li>What does Adam adapt that momentum alone does not?</li>
+        <li>Why is dropout typically only active at training time?</li>
+      </ol>
+      <p>
+        Answers: every neuron in a layer becomes identical and stays identical, so the layer has the capacity of one neuron forever. ReLU zeroes half of its inputs in expectation, doubling needed variance to keep activations stable. Momentum cancels back-and-forth oscillation across narrow valleys and accelerates along the valley floor. Adam adapts <em>per-parameter</em> learning rates by dividing by the running square of the gradient. Dropout adds noise that helps generalization during training; at evaluation we want a single deterministic prediction.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 10 complete.</strong>
+      <span class="next-link">Next: <a href="11-convolutional-networks.html">Chapter 11 — Convolutional Networks →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

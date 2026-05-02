@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 14 · Transformers — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="14">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 14 of 14</p>
+    <h1>Transformers</h1>
+    <p><em>Stack attention, add positions, sprinkle in residual connections and a feed-forward layer. That's the recipe behind every modern large language model.</em></p>
+
+    <section id="overview">
+      <h2>The whole architecture, in one breath</h2>
+      <p>
+        A Transformer is a stack of identical <strong>blocks</strong>. Each block has two sub-layers: a multi-head self-attention layer and a small feed-forward network. Both sub-layers are wrapped in residual connections and layer normalization. Inputs are token embeddings plus positional encodings. Outputs are vectors — one per input position — that you read off either to predict the next token (decoder-only / GPT style) or to feed a downstream task (encoder, BERT style).
+      </p>
+      <p>
+        The original 2017 paper bundles an encoder (for the source sentence) and a decoder (for the target sentence) wired by cross-attention. Modern LLMs almost always drop the encoder and use a decoder-only stack. We'll build both pictures here.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Why it works</div>
+        <p>Every layer mixes information across positions (attention) and then refines each position independently (FFN). Stack a dozen of these and you get arbitrarily deep, position-aware representations — without ever passing a hidden state sequentially through time.</p>
+      </div>
+    </section>
+
+    <section id="positional">
+      <h2>Positional encoding — fixing attention's blind spot</h2>
+      <p>
+        Self-attention is <em>permutation-equivariant</em>: shuffle the input tokens and the outputs shuffle the same way. That is a bug, not a feature, for language. "Dog bites man" and "Man bites dog" must produce different representations.
+      </p>
+      <p>
+        The fix: before the first block, add a position-dependent vector $\mathbf{p}_i$ to each token embedding $\mathbf{x}_i$:
+      </p>
+      $$ \mathbf{z}_i \;=\; \mathbf{x}_i + \mathbf{p}_i. $$
+      <p>
+        The original sinusoidal encoding sets, for position $i$ and embedding dimension index $2k$ or $2k+1$:
+      </p>
+      $$ \mathbf{p}_{i, 2k} = \sin\!\left( \frac{i}{10000^{2k/d}} \right), \qquad \mathbf{p}_{i, 2k+1} = \cos\!\left( \frac{i}{10000^{2k/d}} \right). $$
+      <p>
+        Each dimension is a sinusoid; different dimensions oscillate at exponentially different rates, from very fast to very slow. The reason this particular form is convenient: any position offset $\Delta$ can be written as a linear transformation of the encoding at position $i$ (it's the angle-addition formula in disguise). So relative positions are recoverable by the attention mechanism even though we only injected absolute ones.
+      </p>
+      <p>
+        Most modern models use <strong>learned</strong> positional embeddings (just another lookup table indexed by position) or <strong>rotary</strong> position embeddings (RoPE) which rotate query and key vectors by an angle that depends on their position. The principle is the same: bake position into the input so attention can see it.
+      </p>
+    </section>
+
+    <section id="block">
+      <h2>The Transformer block</h2>
+      <p>
+        Let $\mathbf{H} \in \mathbb{R}^{n \times d}$ be the matrix of token vectors entering a block ($n$ tokens, $d$ features each). The block computes:
+      </p>
+      $$ \mathbf{H}' \;=\; \mathbf{H} + \mathrm{MHA}\!\left( \mathrm{LN}(\mathbf{H}) \right), $$
+      $$ \mathbf{H}'' \;=\; \mathbf{H}' + \mathrm{FFN}\!\left( \mathrm{LN}(\mathbf{H}') \right). $$
+      <p>
+        Two residual connections, two LayerNorms, one MHA, one FFN. That's the entire block.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 520 360" role="img" aria-labelledby="block-title">
+          <title id="block-title">A single Transformer block: input goes through LayerNorm, multi-head attention, a residual addition, then a second LayerNorm, a feed-forward network, and a final residual addition.</title>
+          <defs>
+            <marker id="arrow14a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/>
+            </marker>
+          </defs>
+
+          <rect x="200" y="20" width="120" height="32" rx="6" fill="var(--bg-soft)" stroke="var(--ink)"/>
+          <text x="260" y="40" text-anchor="middle" font-size="13" fill="var(--ink)">Input H</text>
+
+          <rect x="200" y="80" width="120" height="32" rx="6" fill="#eef4f7" stroke="var(--accent)"/>
+          <text x="260" y="100" text-anchor="middle" font-size="13" fill="var(--ink)">LayerNorm</text>
+
+          <rect x="200" y="130" width="120" height="42" rx="6" fill="#eaf3ec" stroke="#2f7d32"/>
+          <text x="260" y="148" text-anchor="middle" font-size="13" fill="var(--ink)">Multi-Head</text>
+          <text x="260" y="164" text-anchor="middle" font-size="13" fill="var(--ink)">Attention</text>
+
+          <circle cx="260" cy="200" r="14" fill="#fff" stroke="var(--ink)"/>
+          <text x="260" y="205" text-anchor="middle" font-size="14" fill="var(--ink)">+</text>
+
+          <rect x="200" y="234" width="120" height="32" rx="6" fill="#eef4f7" stroke="var(--accent)"/>
+          <text x="260" y="254" text-anchor="middle" font-size="13" fill="var(--ink)">LayerNorm</text>
+
+          <rect x="200" y="282" width="120" height="32" rx="6" fill="#fbf2e8" stroke="#a85a1a"/>
+          <text x="260" y="302" text-anchor="middle" font-size="13" fill="var(--ink)">FFN</text>
+
+          <circle cx="260" cy="338" r="14" fill="#fff" stroke="var(--ink)"/>
+          <text x="260" y="343" text-anchor="middle" font-size="14" fill="var(--ink)">+</text>
+
+          <line x1="260" y1="52" x2="260" y2="78" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+          <line x1="260" y1="112" x2="260" y2="128" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+          <line x1="260" y1="172" x2="260" y2="186" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+          <line x1="260" y1="214" x2="260" y2="232" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+          <line x1="260" y1="266" x2="260" y2="280" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+          <line x1="260" y1="314" x2="260" y2="324" stroke="var(--ink)" marker-end="url(#arrow14a)"/>
+
+          <path d="M 260 52 Q 360 52 360 200 Q 360 200 274 200" fill="none" stroke="var(--ink)" stroke-dasharray="4 3" marker-end="url(#arrow14a)"/>
+          <text x="370" y="130" font-size="11" fill="var(--muted)">residual</text>
+
+          <path d="M 260 214 Q 360 214 360 338 Q 360 338 274 338" fill="none" stroke="var(--ink)" stroke-dasharray="4 3" marker-end="url(#arrow14a)"/>
+          <text x="370" y="290" font-size="11" fill="var(--muted)">residual</text>
+
+          <line x1="260" y1="352" x2="260" y2="358" stroke="var(--ink)"/>
+          <text x="345" y="358" font-size="12" fill="var(--muted)">→ output H″</text>
+        </svg>
+        <figcaption>One Transformer block, pre-norm variant. The residuals carry the input around each sub-layer; the LayerNorms keep the activations well-scaled going into MHA and FFN.</figcaption>
+      </figure>
+
+      <p>
+        Two stylistic notes worth knowing:
+      </p>
+      <ul>
+        <li><strong>Pre-norm vs. post-norm.</strong> The original paper applied LayerNorm <em>after</em> each sub-layer (post-norm). Modern stacks almost always apply it <em>before</em> (pre-norm), as drawn above. Pre-norm trains more stably at depth.</li>
+        <li><strong>Residuals are everywhere.</strong> Without them, gradients through a 24-layer Transformer would never reach the bottom embedding table. With them, every block has a direct gradient path back to the input. Same trick we used in ResNet (Ch 11).</li>
+      </ul>
+    </section>
+
+    <section id="ffn">
+      <h2>The position-wise feed-forward network</h2>
+      <p>
+        After attention has mixed information across positions, the FFN refines each position independently. It is a tiny two-layer MLP applied to <em>every</em> token vector with <em>shared</em> weights:
+      </p>
+      $$ \mathrm{FFN}(\mathbf{h}) \;=\; \mathbf{W}_2\, \phi(\mathbf{W}_1 \mathbf{h} + \mathbf{b}_1) + \mathbf{b}_2. $$
+      <p>
+        The hidden width is conventionally $4d$ — so an FFN with $d = 1024$ has a 4096-unit hidden layer. The activation $\phi$ is GELU in modern models (a smooth ReLU variant), or sometimes SwiGLU.
+      </p>
+      <p>
+        Why "position-wise"? Because the same $\mathbf{W}_1, \mathbf{W}_2$ are applied to every row of $\mathbf{H}$. The FFN never looks at neighbours; that job is exclusively attention's. The split — <em>attention mixes across positions, FFN refines each position</em> — is the cleanest way to read the architecture.
+      </p>
+      <p>
+        One often-overlooked fact: the FFN holds <em>most</em> of the parameters in a Transformer. With $d = 1024$, attention has $\sim 4 d^2 = 4{,}194{,}304$ parameters per block (four projection matrices) but the FFN has $\sim 8 d^2 = 8{,}388{,}608$ (two $d \times 4d$ matrices). Scaling laws care about the FFN.
+      </p>
+    </section>
+
+    <section id="layernorm">
+      <h2>Layer normalization, briefly</h2>
+      <p>
+        We saw batch normalization in Chapter 10. <strong>LayerNorm</strong> is its sequence-friendly cousin. Where BatchNorm normalizes each feature across the batch, LayerNorm normalizes <em>each token vector</em> across its features. For a vector $\mathbf{h} \in \mathbb{R}^d$:
+      </p>
+      $$ \mu = \frac{1}{d} \sum_{j=1}^d h_j, \quad \sigma^2 = \frac{1}{d} \sum_{j=1}^d (h_j - \mu)^2, $$
+      $$ \mathrm{LN}(\mathbf{h}) = \boldsymbol{\gamma} \odot \frac{\mathbf{h} - \mu}{\sqrt{\sigma^2 + \varepsilon}} + \boldsymbol{\beta}. $$
+      <p>
+        $\boldsymbol{\gamma}, \boldsymbol{\beta} \in \mathbb{R}^d$ are learned scale and shift. Because the mean and variance are computed per token, LayerNorm doesn't depend on batch size, doesn't need a running average, and works exactly the same at training and inference time. That makes it ideal for variable-length sequences and autoregressive generation.
+      </p>
+    </section>
+
+    <section id="encoder-decoder">
+      <h2>Encoder, decoder, decoder-only</h2>
+      <p>
+        Stacking $N$ blocks gives you a tower. There are three flavours of tower in common use:
+      </p>
+
+      <h3 id="encoder">Encoder (BERT-style)</h3>
+      <p>
+        $N$ blocks, all using <em>unmasked</em> self-attention. Every position attends to every other position, in both directions. Useful when you have the whole input up front and want representations of it (classification, search, sentiment).
+      </p>
+
+      <h3 id="decoder-only">Decoder-only (GPT-style)</h3>
+      <p>
+        $N$ blocks, all using <em>causal</em> self-attention (the triangular mask from Ch 13). Position $t$ can only attend to positions $\le t$. Train it to predict the next token; at inference, sample one token at a time. This is the architecture behind essentially every modern LLM.
+      </p>
+
+      <h3 id="encoder-decoder-arch">Encoder–decoder (translation, T5)</h3>
+      <p>
+        An encoder reads the source sentence; a decoder generates the target sentence. Each decoder block has a third sub-layer: <strong>cross-attention</strong>, where the queries come from the decoder's previous layer but the keys and values come from the <em>encoder's</em> output. The decoder is causal among its own tokens but free to look anywhere in the source.
+      </p>
+      <p>
+        Cross-attention is just the same attention formula with a different wiring: $\mathbf{Q}$ from decoder, $\mathbf{K}, \mathbf{V}$ from encoder. Three matrices in, one matrix out.
+      </p>
+    </section>
+
+    <section id="full-stack">
+      <h2>The full decoder-only stack, end to end</h2>
+      <p>
+        Let's trace what happens to a sequence of tokens "the cat sat" in a decoder-only Transformer with $N$ blocks, vocabulary size $V$, embedding dimension $d$, and context length $T$.
+      </p>
+      <ol>
+        <li><strong>Tokenize.</strong> Split the string into integer ids using a tokenizer (BPE, SentencePiece). "the cat sat" → $[ 50, 712, 904 ]$. Sequence length $n = 3$.</li>
+        <li><strong>Embed.</strong> Look up each id in an embedding matrix $\mathbf{E} \in \mathbb{R}^{V \times d}$, giving an $n \times d$ matrix of token embeddings.</li>
+        <li><strong>Add positions.</strong> Add positional encoding $\mathbf{P}$ (or apply RoPE inside attention). Result: $\mathbf{H}_0 \in \mathbb{R}^{n \times d}$.</li>
+        <li><strong>Run $N$ blocks.</strong> $\mathbf{H}_\ell = \mathrm{Block}(\mathbf{H}_{\ell-1})$ for $\ell = 1, \ldots, N$. Each block applies pre-norm, masked MHA, residual, pre-norm, FFN, residual.</li>
+        <li><strong>Final LayerNorm.</strong> Apply one more LayerNorm to $\mathbf{H}_N$ to get well-scaled output vectors.</li>
+        <li><strong>Project to vocabulary.</strong> Multiply by an unembedding matrix $\mathbf{W}_U \in \mathbb{R}^{d \times V}$ — often weight-tied to $\mathbf{E}^\top$ — yielding logits $\mathbf{L} \in \mathbb{R}^{n \times V}$.</li>
+        <li><strong>Loss.</strong> At training, compute cross-entropy between row $i$ of $\mathbf{L}$ and the true token at position $i+1$. Sum over positions, average over the batch.</li>
+        <li><strong>Generate.</strong> At inference, take the last row $\mathbf{L}_n$, softmax it, sample a token, append it to the sequence, and repeat.</li>
+      </ol>
+
+      <div class="callout warning">
+        <div class="callout-title">The training trick everything depends on</div>
+        <p>Because attention is causal, you can compute the loss for <em>every</em> position in the sequence in a <em>single</em> forward pass. One training example of length $T$ produces $T$ next-token-prediction losses. This is why pretraining is so dramatically efficient: every token in your corpus is a training signal.</p>
+      </div>
+    </section>
+
+    <section id="param-count">
+      <h2>Counting parameters</h2>
+      <p>
+        A useful sanity check before you train anything. For one decoder-only block with hidden size $d$ and FFN width $4d$:
+      </p>
+      <ul>
+        <li>Attention projections $\mathbf{W}_Q, \mathbf{W}_K, \mathbf{W}_V, \mathbf{W}_O$: $4 \times d \times d = 4d^2$ params.</li>
+        <li>FFN: $\mathbf{W}_1$ is $d \times 4d$, $\mathbf{W}_2$ is $4d \times d$, total $8d^2$ params.</li>
+        <li>Two LayerNorms: $4d$ params (negligible).</li>
+      </ul>
+      <p>
+        So one block is roughly $12 d^2$ parameters. With $N$ blocks, the body has $\approx 12 N d^2$ parameters. Add embeddings ($V d$) and you're done.
+      </p>
+      <p>
+        Plug in GPT-2 small ($d=768$, $N=12$): $12 \cdot 12 \cdot 768^2 \approx 85$M params for the body, $\approx 39$M for embeddings → $\approx 124$M total. Matches reality.
+      </p>
+      <p>
+        Plug in GPT-3 ($d=12288$, $N=96$): $12 \cdot 96 \cdot 12288^2 \approx 174$ <em>billion</em> params for the body. Embeddings (vocab $\approx 50{,}000$ tokens, no weight tying) add another $\sim 1.2$B, landing on the 175B headline figure. The whole thing is one back-of-the-envelope formula.
+      </p>
+    </section>
+
+    <section id="why-scale">
+      <h2>Why Transformers scale</h2>
+      <p>
+        Transformers replaced RNNs because they train better, not because they "compute more." Three properties matter:
+      </p>
+      <ol>
+        <li><strong>Parallelism along the sequence.</strong> An RNN must process tokens one at a time — the hidden state at step $t$ depends on step $t-1$. A Transformer block computes attention and FFN for all positions at once, as matrix multiplies. On a GPU, this is the difference between sequential and saturating the entire chip.</li>
+        <li><strong>Constant path length.</strong> Information from any position can reach any other position in <em>one</em> attention step, regardless of distance. RNN gradients have to traverse $\Delta t$ layers to connect positions $\Delta t$ apart, which causes vanishing. Transformers don't.</li>
+        <li><strong>Smooth scaling laws.</strong> Empirically, loss decreases as a smooth power law in model size, dataset size, and compute (Kaplan et al. 2020, Chinchilla 2022). You can predict from a small experiment what a 100× larger model will achieve. That predictability is rare in machine learning, and it's what made the LLM bet rational.</li>
+      </ol>
+      <p>
+        The price you pay is the $O(n^2 d)$ cost of attention — fine for sequences of a few thousand tokens, painful at a million. Most current research on architecture is about smarter attention (sliding window, sparse, linearized, state-space) that keeps the strengths above while taming the quadratic.
+      </p>
+    </section>
+
+    <section id="bridge">
+      <h2>From Transformer to LLM</h2>
+      <p>
+        The leap from "the architecture in this chapter" to "the chatbot you talked to today" is mostly engineering and data, not new math. Three stages:
+      </p>
+      <ol>
+        <li><strong>Pretraining.</strong> Take a decoder-only Transformer with billions of parameters. Train on a trillion-token internet corpus to predict the next token. This single objective produces a model with surprising emergent capabilities: arithmetic, translation, reasoning, code.</li>
+        <li><strong>Supervised fine-tuning (SFT).</strong> Continue training on a curated dataset of (prompt, ideal response) pairs. The base model still does next-token prediction; we just point it at conversation-shaped data so its default style becomes "helpful assistant."</li>
+        <li><strong>Preference optimization (RLHF, DPO).</strong> Show the model two candidate responses for a prompt and a human label saying which is better. Use that signal to nudge the model toward responses humans prefer. This is what turns a fluent text completer into something that reliably follows instructions and refuses harmful requests.</li>
+      </ol>
+      <p>
+        Every one of those stages uses the gradient descent and backpropagation you learned in Chapters 7–10, the architecture you just built, and the cross-entropy loss from Chapter 5. Nothing new.
+      </p>
+    </section>
+
+    <section id="closing">
+      <h2>What you have learned</h2>
+      <p>
+        Pause for a moment. Fourteen chapters ago you started with the definition of a function and the slope of a line. You can now describe — with equations and from first principles:
+      </p>
+      <ul>
+        <li>Why a single neuron is a dot product through a non-linearity.</li>
+        <li>Why stacking neurons requires non-linearity to be expressive at all.</li>
+        <li>How a network learns: a loss surface, a gradient, a small step downhill, repeated billions of times.</li>
+        <li>How backpropagation makes that gradient cheap to compute, no matter how deep the network.</li>
+        <li>Why convolutions exploit spatial structure and why recurrence struggles with long-range dependence.</li>
+        <li>How attention sidesteps recurrence by reading every position in parallel through a learned similarity.</li>
+        <li>How a Transformer is just a residual stack of attention and feed-forward layers, and why that recipe scales.</li>
+      </ul>
+      <p>
+        Every modern AI system you read about — language models, image generators, code assistants, protein folders — is built from these same parts, sometimes rearranged, never fundamentally different. The frontier is huge, but the foundations are not. You have them.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Where to go next</div>
+        <p>Re-derive backpropagation on a piece of paper without notes. Implement a tiny GPT in 200 lines of NumPy. Read the Transformer paper ("Attention Is All You Need") — every line should now make sense. Read the Chinchilla paper for scaling laws. After that, you're not learning the basics; you're doing research.</p>
+      </div>
+    </section>
+
+    <section id="self-check">
+      <h2>Self-check</h2>
+      <ol>
+        <li>Why does self-attention need positional encoding at all?</li>
+        <li>What is the difference between pre-norm and post-norm, and which is more stable?</li>
+        <li>Where do most of a Transformer's parameters live — attention or FFN?</li>
+        <li>What is the one architectural difference between a decoder-only Transformer and an encoder-only Transformer?</li>
+        <li>Why does causal masking let you compute $T$ next-token losses in one forward pass?</li>
+      </ol>
+      <p>
+        Answers: because attention is permutation-equivariant; without positions, the model cannot distinguish word order. Pre-norm puts LayerNorm <em>inside</em> the residual branch, before each sub-layer; it trains more stably at depth, especially past 12 layers. The FFN — roughly $8d^2$ vs. $4d^2$ for attention. The mask in self-attention: encoder-only is unmasked (bidirectional); decoder-only is causal (triangular). Because each output position depends only on positions to its left, position $t$ can predict token $t+1$ without leaking it; running through the sequence once produces $T$ independent training signals.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 14 complete. Course complete.</strong>
+      <span class="next-link">You have reached the end. <a href="../index.html">← Return to the roadmap</a> · <a href="../about.html">About this site →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

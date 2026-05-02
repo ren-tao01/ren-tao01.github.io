@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 3 · Derivatives — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="3">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 3 of 14</p>
+    <h1>Derivatives</h1>
+    <p><em>The slope of a curve at a point. The single most important idea in machine learning, because it tells us which way to nudge a parameter to make a loss go down.</em></p>
+
+    <section id="motivation">
+      <h2>The one-line motivation</h2>
+      <p>
+        We are eventually going to have a function called the <strong>loss</strong>, $L(w)$, that measures how wrong our network is when its weights are $w$. We want $L(w)$ to be small. If we know the slope of $L$ at the current $w$, we know which way "downhill" is. That's what a derivative gives us. Everything else in this chapter is technique for computing slopes accurately.
+      </p>
+    </section>
+
+    <section id="slope">
+      <h2>Slope of a line</h2>
+      <p>
+        For a straight line $y = mx + b$, the slope is $m$: the rise over the run. Move one unit right, go $m$ units up. That's it. The slope is the same everywhere on the line.
+      </p>
+      <p>
+        For a curve, the slope <em>changes</em> from point to point. We need a definition that lets us pin it down at one specific input.
+      </p>
+    </section>
+
+    <section id="limit-definition">
+      <h2>The limit definition</h2>
+      <p>
+        Pick a function $f$ and an input $x$. Pick a small number $h$. The line through $\bigl(x, f(x)\bigr)$ and $\bigl(x+h, f(x+h)\bigr)$ — the <em>secant line</em> — has slope
+      </p>
+      $$ \frac{f(x+h) - f(x)}{h}. $$
+      <p>
+        Now imagine shrinking $h$ toward zero. The secant line tilts and lines up with the curve right at $x$ — the <em>tangent line</em>. The number it converges to (when it does) is the <strong>derivative</strong> of $f$ at $x$:
+      </p>
+      $$ f'(x) \;=\; \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}. $$
+
+      <figure>
+        <svg viewBox="0 0 480 280" width="480" aria-labelledby="fig-secant-title" role="img">
+          <title id="fig-secant-title">A secant line approaching the tangent line as h shrinks</title>
+          <line x1="40" y1="240" x2="460" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <!-- curve y = 0.025*(x-40)^2 from x=40..420 -->
+          <path d="M 40 240 Q 230 -50, 420 60" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+          <!-- point P at x=200, value approx 0.025*160^2=640 -> off chart, scale: pick smaller curve -->
+          <!-- Use simpler control: curve already drawn. Choose two points along the curve. -->
+          <!-- Approx points on curve: P at (180,160), Q at (340,80). Tangent at P. -->
+          <line x1="50" y1="220" x2="380" y2="40" stroke="#c97b3c" stroke-width="2" stroke-dasharray="6 4"/>
+          <line x1="80" y1="240" x2="320" y2="60" stroke="#2a6f97" stroke-width="2"/>
+          <circle cx="180" cy="160" r="5" fill="#1a1a1a"/>
+          <circle cx="340" cy="80" r="5" fill="#1a1a1a"/>
+          <text x="155" y="155" font-family="Georgia, serif" font-size="13">P</text>
+          <text x="350" y="78"  font-family="Georgia, serif" font-size="13">Q</text>
+          <text x="380" y="32" fill="#c97b3c" font-family="Georgia, serif" font-size="13">tangent at P</text>
+          <text x="100" y="248" fill="#2a6f97" font-family="Georgia, serif" font-size="13">secant PQ</text>
+        </svg>
+        <figcaption>As $Q$ slides toward $P$ along the curve, the secant line PQ rotates into the tangent line at $P$.</figcaption>
+      </figure>
+
+      <p>
+        We will not labor over the formal $\varepsilon$–$\delta$ definition of a limit. The intuition — "shrink $h$ and see what number the secant slope is heading toward" — is enough to derive every derivative we need.
+      </p>
+    </section>
+
+    <section id="first-derivative-from-scratch">
+      <h2>One derivative from scratch</h2>
+      <p>
+        Let $f(x) = x^2$. Compute the derivative directly:
+      </p>
+      $$ \begin{aligned}
+        f'(x) &= \lim_{h \to 0} \frac{(x+h)^2 - x^2}{h} \\
+              &= \lim_{h \to 0} \frac{x^2 + 2xh + h^2 - x^2}{h} \\
+              &= \lim_{h \to 0} \frac{2xh + h^2}{h} \\
+              &= \lim_{h \to 0} (2x + h) \\
+              &= 2x.
+      \end{aligned} $$
+      <p>
+        So the slope of $y = x^2$ at any point $x$ is $2x$. At $x=0$ the curve is flat. At $x=3$ it climbs at slope $6$. At $x=-1$ it descends at slope $-2$. That single result — derivative of $x^2$ is $2x$ — agrees with the visual: the parabola is steeper the farther you are from the vertex.
+      </p>
+    </section>
+
+    <section id="rules">
+      <h2>The rules of differentiation</h2>
+      <p>
+        Computing every derivative from the limit definition would be exhausting. Fortunately, a handful of rules let you build complicated derivatives from a small library of simple ones.
+      </p>
+
+      <h3 id="power-rule">Power rule</h3>
+      $$ \frac{d}{dx} x^n \;=\; n\, x^{n-1}. $$
+      <p>
+        Examples: $\frac{d}{dx} x^3 = 3x^2$; $\frac{d}{dx} x^{1/2} = \tfrac{1}{2} x^{-1/2}$; $\frac{d}{dx} x = 1$; $\frac{d}{dx} 7 = 0$ (a constant has no slope).
+      </p>
+
+      <h3 id="constant-multiple-rule">Constant multiple and sum rules</h3>
+      $$ \frac{d}{dx}\bigl[c\,f(x)\bigr] = c\, f'(x), \qquad \frac{d}{dx}\bigl[f(x) + g(x)\bigr] = f'(x) + g'(x). $$
+      <p>
+        Constants pass through unchanged; sums differentiate term by term.
+      </p>
+
+      <h3 id="product-rule">Product rule</h3>
+      $$ \frac{d}{dx}\bigl[f(x)\, g(x)\bigr] = f'(x)\, g(x) + f(x)\, g'(x). $$
+      <p>
+        Two-step memory aid: differentiate the first, leave the second alone, then add the first-times-derivative-of-second.
+      </p>
+
+      <h3 id="quotient-rule">Quotient rule</h3>
+      $$ \frac{d}{dx}\!\left[\frac{f(x)}{g(x)}\right] = \frac{f'(x)\, g(x) - f(x)\, g'(x)}{[g(x)]^2}. $$
+      <p>
+        Used less often than the product rule. You can usually rewrite a quotient as a product with a negative power and skip it.
+      </p>
+    </section>
+
+    <section id="exp-log-derivatives">
+      <h2>Derivatives of $e^x$ and $\ln(x)$</h2>
+      <p>
+        Two facts so important we will use them again and again:
+      </p>
+      $$ \frac{d}{dx} e^x \;=\; e^x, \qquad \frac{d}{dx} \ln(x) \;=\; \frac{1}{x}. $$
+      <p>
+        The first one is the defining property of $e$: it is the unique base for which the exponential function equals its own derivative. That is exactly what makes $e$ special. (Try the same calculation with $2^x$ and you'll get a clumsier answer involving $\ln 2$.)
+      </p>
+      <p>
+        The second is the inverse of the first. We will derive it from the chain rule below as a sanity check.
+      </p>
+    </section>
+
+    <section id="chain-rule">
+      <h2>The chain rule</h2>
+      <p>
+        This is the rule everything in this site eventually depends on. Suppose $y = f(g(x))$ — that is, $y$ is computed by first applying $g$ and then applying $f$. Let $u = g(x)$ for a moment, so $y = f(u)$. Then
+      </p>
+      $$ \frac{dy}{dx} \;=\; \frac{dy}{du} \cdot \frac{du}{dx} \;=\; f'\bigl(g(x)\bigr) \cdot g'(x). $$
+      <p>
+        In words: <strong>the derivative of a composition is the product of derivatives of the pieces, evaluated at the right places.</strong>
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Why this matters for backprop</div>
+        <p>A neural network is dozens or hundreds of compositions stacked on top of each other. To find how a small change in a weight at the bottom affects the loss at the top, you multiply derivatives along the chain. Backpropagation in Chapter 9 is exactly the chain rule, applied in a careful order.</p>
+      </div>
+
+      <h3 id="chain-examples">Worked examples</h3>
+      <p>
+        <strong>Example 1.</strong> $y = (3x+1)^5$. Let $u = 3x+1$, $y = u^5$. Then $\dfrac{dy}{du} = 5u^4$ and $\dfrac{du}{dx} = 3$. Multiply:
+      </p>
+      $$ \frac{dy}{dx} = 5(3x+1)^4 \cdot 3 = 15(3x+1)^4. $$
+      <p>
+        <strong>Example 2.</strong> $y = e^{2x}$. Let $u = 2x$. Then $\dfrac{dy}{du} = e^u$, $\dfrac{du}{dx} = 2$, so $\dfrac{dy}{dx} = 2 e^{2x}$.
+      </p>
+      <p>
+        <strong>Example 3 (the derivative of $\ln x$).</strong> Let $y = \ln x$, so $e^y = x$. Differentiate both sides with respect to $x$. Using the chain rule on the left,
+      </p>
+      $$ e^y \cdot \frac{dy}{dx} = 1, \qquad \text{therefore} \qquad \frac{dy}{dx} = \frac{1}{e^y} = \frac{1}{x}. $$
+    </section>
+
+    <section id="sigmoid-derivative">
+      <h2>Derivative of the sigmoid (a preview)</h2>
+      <p>
+        We will need this in Chapter 6. The sigmoid is $\sigma(x) = \dfrac{1}{1+e^{-x}}$. Use the chain rule on $1/(1+e^{-x}) = (1+e^{-x})^{-1}$. With $u = 1 + e^{-x}$ we have $\dfrac{du}{dx} = -e^{-x}$, so
+      </p>
+      $$ \sigma'(x) = -1 \cdot (1+e^{-x})^{-2} \cdot (-e^{-x}) = \frac{e^{-x}}{(1+e^{-x})^2}. $$
+      <p>
+        Two short algebra steps later — multiply numerator and denominator by appropriate things — and we land on the famous tidy form:
+      </p>
+      $$ \sigma'(x) \;=\; \sigma(x)\bigl(1 - \sigma(x)\bigr). $$
+      <p>
+        That is the entire reason the sigmoid was popular for decades: its derivative can be computed from its output value alone, with no reuse of $x$. Worth remembering.
+      </p>
+    </section>
+
+    <section id="higher-derivatives">
+      <h2>Higher derivatives, briefly</h2>
+      <p>
+        The derivative of the derivative is the <strong>second derivative</strong>, written $f''(x)$ or $\frac{d^2 y}{dx^2}$. It tells you how the slope itself is changing. We won't lean on second derivatives in this site — first-order gradient descent is enough — but it's worth knowing the notation exists, because some optimizers (e.g. second-order methods like Newton's) use it.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>What is $\frac{d}{dx}(x^4 - 3x + 7)$?</li>
+        <li>What is $\frac{d}{dx} e^{-x}$?</li>
+        <li>If $h(x) = \ln(x^2 + 1)$, what is $h'(x)$?</li>
+        <li>What is $\sigma'(0)$, where $\sigma$ is the sigmoid?</li>
+        <li>Why does the chain rule have a multiplication, not an addition?</li>
+      </ol>
+      <p>
+        Answers: $4x^3 - 3$; $-e^{-x}$; $\dfrac{2x}{x^2+1}$ (chain rule with inner $u=x^2+1$); $\sigma(0) = \tfrac{1}{2}$, so $\sigma'(0) = \tfrac{1}{2}\cdot\tfrac{1}{2} = \tfrac{1}{4}$; because composing functions <em>multiplies</em> their effects: a small change $\Delta x$ produces $g'(x)\Delta x$ in $u$, which then produces $f'(u) g'(x)\Delta x$ in the output.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 3 complete.</strong>
+      <span class="next-link">Next: <a href="04-multivariable-and-gradients.html">Chapter 4 — Gradients →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

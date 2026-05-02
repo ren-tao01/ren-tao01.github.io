@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 12 · Recurrent Networks — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="12">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 12 of 14</p>
+    <h1>Recurrent Networks</h1>
+    <p><em>An MLP that has memory. We unroll it through time, derive backprop-through-time, meet the vanishing gradient, and read the LSTM cell.</em></p>
+
+    <section id="why">
+      <h2>Why we need a different architecture</h2>
+      <p>
+        Many tasks process sequences: sentences, audio waveforms, time-series sensor data, video frames. The key fact is that <em>the input length varies</em> and <em>order matters</em>. An MLP with a fixed-size input vector cannot handle a sequence of unknown length without awkward padding. A CNN is better, but its receptive field is fixed.
+      </p>
+      <p>
+        A <strong>recurrent neural network (RNN)</strong> processes the sequence one step at a time, carrying a small <em>hidden state</em> from one step to the next. Conceptually:
+      </p>
+      <blockquote>"Read a token. Update memory. Repeat."</blockquote>
+    </section>
+
+    <section id="vanilla-rnn">
+      <h2>The vanilla RNN</h2>
+      <p>
+        At time $t$, given input $\mathbf{x}_t$ and previous hidden state $\mathbf{h}_{t-1}$, the RNN computes
+      </p>
+      $$ \mathbf{h}_t \;=\; \tanh\!\bigl(\mathbf{W}_{xh}\, \mathbf{x}_t + \mathbf{W}_{hh}\, \mathbf{h}_{t-1} + \mathbf{b}_h\bigr), $$
+      <p>
+        and optionally produces an output $\mathbf{y}_t = \mathbf{W}_{hy}\mathbf{h}_t + \mathbf{b}_y$ at each step. The matrices $\mathbf{W}_{xh}, \mathbf{W}_{hh}, \mathbf{W}_{hy}$ and the biases are <em>shared across all time steps</em> — exactly the parameter-sharing trick that made CNNs efficient.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 540 220" width="540" aria-labelledby="fig-rnn-title" role="img">
+          <title id="fig-rnn-title">An RNN unrolled across three time steps</title>
+          <defs>
+            <marker id="rnnA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a6f97"/>
+            </marker>
+          </defs>
+          <!-- inputs -->
+          <g fill="#fbe9d8" stroke="#c97b3c" stroke-width="2">
+            <circle cx="100" cy="170" r="18"/>
+            <circle cx="270" cy="170" r="18"/>
+            <circle cx="440" cy="170" r="18"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="13" text-anchor="middle">
+            <text x="100" y="174">x₁</text><text x="270" y="174">x₂</text><text x="440" y="174">x₃</text>
+          </g>
+          <!-- hidden -->
+          <g fill="#d6e6f0" stroke="#2a6f97" stroke-width="2">
+            <rect x="76"  y="80" width="48" height="40" rx="6"/>
+            <rect x="246" y="80" width="48" height="40" rx="6"/>
+            <rect x="416" y="80" width="48" height="40" rx="6"/>
+          </g>
+          <g font-family="Georgia, serif" font-size="13" text-anchor="middle">
+            <text x="100" y="105">h₁</text><text x="270" y="105">h₂</text><text x="440" y="105">h₃</text>
+          </g>
+          <!-- input arrows -->
+          <g stroke="#2a6f97" stroke-width="1.6" fill="none">
+            <line x1="100" y1="152" x2="100" y2="120" marker-end="url(#rnnA)"/>
+            <line x1="270" y1="152" x2="270" y2="120" marker-end="url(#rnnA)"/>
+            <line x1="440" y1="152" x2="440" y2="120" marker-end="url(#rnnA)"/>
+          </g>
+          <!-- recurrent arrows h_{t-1} -> h_t -->
+          <g stroke="#2a6f97" stroke-width="1.8" fill="none">
+            <line x1="124" y1="100" x2="246" y2="100" marker-end="url(#rnnA)"/>
+            <line x1="294" y1="100" x2="416" y2="100" marker-end="url(#rnnA)"/>
+          </g>
+          <text x="185" y="92" font-family="Georgia, serif" font-size="12" fill="#1a4d6b" text-anchor="middle">W_hh</text>
+          <text x="355" y="92" font-family="Georgia, serif" font-size="12" fill="#1a4d6b" text-anchor="middle">W_hh</text>
+          <text x="50"  y="105" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">h₀</text>
+          <line x1="50" y1="100" x2="76" y2="100" stroke="#2a6f97" stroke-width="1.8" marker-end="url(#rnnA)"/>
+          <text x="270" y="40" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">unrolled three time steps; same W_hh everywhere</text>
+        </svg>
+        <figcaption>The RNN drawn as an unrolled chain. Hidden state flows left to right; the same weights are used at every step.</figcaption>
+      </figure>
+    </section>
+
+    <section id="bptt">
+      <h2>Backpropagation through time</h2>
+      <p>
+        Once unrolled, an RNN is just a (long, peculiar) feed-forward network in which many layers share the same weights. Backpropagation applies as usual; we call it <strong>backpropagation through time</strong> (BPTT).
+      </p>
+      <p>
+        Two consequences:
+      </p>
+      <ul>
+        <li>The gradient with respect to a shared weight is the <em>sum</em> of contributions across all time steps where that weight appears.</li>
+        <li>To compute the gradient at step $t$, we need the activations from every earlier step. So memory cost grows with sequence length.</li>
+      </ul>
+      <p>
+        For very long sequences we use <strong>truncated BPTT</strong>: backpropagate only the last $K$ steps and treat earlier hidden states as fixed inputs. Cheaper, but also blind to long-range dependencies beyond $K$.
+      </p>
+    </section>
+
+    <section id="vanishing">
+      <h2>The vanishing-gradient problem</h2>
+      <p>
+        Apply the chain rule across $T$ time steps. The gradient of the loss with respect to $\mathbf{h}_0$ involves a product of $T$ Jacobians of the recurrence, each of the form
+      </p>
+      $$ \frac{\partial \mathbf{h}_{t}}{\partial \mathbf{h}_{t-1}} \;=\; \mathrm{diag}\!\bigl(\tanh'(\mathbf{z}_t)\bigr) \cdot \mathbf{W}_{hh}. $$
+      <p>
+        If the largest singular value of this matrix is below $1$, repeated multiplication shrinks the gradient toward zero — the <strong>vanishing gradient</strong>. If it is above $1$, the gradient explodes. Either way, learning long-range dependencies is hopeless: the signal from step $T$ can no longer reliably steer the weights at step $1$.
+      </p>
+      <p>
+        Gradient clipping (rescaling whenever the norm exceeds a threshold) handles explosions. Vanishing is harder; it requires a different recurrence.
+      </p>
+    </section>
+
+    <section id="lstm">
+      <h2>The LSTM</h2>
+      <p>
+        The <strong>long short-term memory</strong> cell (Hochreiter &amp; Schmidhuber, 1997) replaces the simple tanh recurrence with a gated mechanism that lets gradients flow more easily across time. It carries two state vectors: a <em>cell state</em> $\mathbf{c}_t$ and a <em>hidden state</em> $\mathbf{h}_t$. At each step:
+      </p>
+      $$ \begin{aligned}
+        \mathbf{f}_t &= \sigma\!\bigl(\mathbf{W}_f [\mathbf{h}_{t-1}; \mathbf{x}_t] + \mathbf{b}_f\bigr) && \text{forget gate} \\
+        \mathbf{i}_t &= \sigma\!\bigl(\mathbf{W}_i [\mathbf{h}_{t-1}; \mathbf{x}_t] + \mathbf{b}_i\bigr) && \text{input gate} \\
+        \tilde{\mathbf{c}}_t &= \tanh\!\bigl(\mathbf{W}_c [\mathbf{h}_{t-1}; \mathbf{x}_t] + \mathbf{b}_c\bigr) && \text{candidate cell update} \\
+        \mathbf{c}_t &= \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t && \text{updated cell state} \\
+        \mathbf{o}_t &= \sigma\!\bigl(\mathbf{W}_o [\mathbf{h}_{t-1}; \mathbf{x}_t] + \mathbf{b}_o\bigr) && \text{output gate} \\
+        \mathbf{h}_t &= \mathbf{o}_t \odot \tanh(\mathbf{c}_t)
+      \end{aligned} $$
+      <p>
+        The semicolon means stacking $\mathbf{h}_{t-1}$ and $\mathbf{x}_t$ into a single column. Each gate is a sigmoid output, so its values lie in $(0,1)$ and act as element-wise on/off switches.
+      </p>
+      <p>
+        The crucial line is the cell-state update: $\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t.$ When the forget gate is close to $1$, the cell state passes through almost unchanged. The gradient of $\mathbf{c}_t$ with respect to $\mathbf{c}_{t-1}$ is then approximately the identity, and gradients can flow across many time steps without shrinking. That is the LSTM's whole reason for existing.
+      </p>
+    </section>
+
+    <section id="gru">
+      <h2>The GRU, briefly</h2>
+      <p>
+        The <strong>gated recurrent unit</strong> (Cho et al., 2014) is a simpler cousin: it merges the forget and input gates into a single update gate, and merges the cell state with the hidden state. Fewer parameters, often comparable performance. The takeaway: gating is the important idea; the exact wiring is a matter of taste.
+      </p>
+    </section>
+
+    <section id="usage-patterns">
+      <h2>Common usage patterns</h2>
+      <ul>
+        <li><strong>Many-to-one</strong>: feed a sequence in, take the final hidden state, classify (e.g. sentiment of a sentence).</li>
+        <li><strong>Many-to-many (aligned)</strong>: produce an output at every step (e.g. part-of-speech tagging).</li>
+        <li><strong>Encoder-decoder (sequence to sequence)</strong>: one RNN compresses a sequence into a single vector; another RNN expands that vector into a target sequence (e.g. machine translation in 2014–2016).</li>
+        <li><strong>Bidirectional RNN</strong>: run two RNNs over the sequence — one left-to-right, one right-to-left — and concatenate. Each step's representation now sees both past and future context.</li>
+      </ul>
+    </section>
+
+    <section id="why-attention-needed">
+      <h2>Why we'll soon need attention</h2>
+      <p>
+        Encoder-decoder RNNs work when sequences are short, but they squeeze the entire input into a single fixed-size vector that the decoder must use to produce every output token. For long inputs (a paragraph translated to another language), the bottleneck strangles the model.
+      </p>
+      <p>
+        The fix, in 2015, was <strong>attention</strong>: instead of compressing, let the decoder reach back and look at all encoder states each time it produces a new output, and learn to weight which ones to focus on. That single idea — attention — soon proved so powerful that recurrence itself was no longer needed. We meet it in Chapter 13.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>Why are weights shared across time in an RNN?</li>
+        <li>Why does the gradient at step $1$ involve a product of many Jacobians?</li>
+        <li>What does the forget gate of an LSTM accomplish at the level of gradient flow?</li>
+        <li>Why does gradient clipping help with explosions but not with vanishing?</li>
+        <li>What is the bottleneck of an encoder-decoder RNN that motivated attention?</li>
+      </ol>
+      <p>
+        Answers: because the recurrence is the same operation repeated many times — we want one rule, applied uniformly. Because each step's hidden state depends on the previous one, so $\partial L / \partial \mathbf{h}_1$ goes through every intermediate Jacobian. By keeping the multiplicative factor on the cell state close to $1$, it lets gradients pass nearly unchanged across many time steps. Clipping rescales large gradients, fixing explosion; vanishing gradients are too small to clip and need a different architecture. The single fixed-size vector the encoder must produce, regardless of how much information the input carries.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 12 complete.</strong>
+      <span class="next-link">Next: <a href="13-attention.html">Chapter 13 — Attention →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>

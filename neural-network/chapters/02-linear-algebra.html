@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch 2 · Linear Algebra — Neural Networks From Scratch</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}], throwOnError:false});"></script>
+</head>
+<body data-chapter-id="2">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span>Neural Networks From Scratch</a>
+    <nav class="topnav" aria-label="Site">
+      <a href="../index.html">Roadmap</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chapter-shell">
+  <aside class="sidebar" aria-label="Chapter navigation">
+    <h4>Roadmap</h4>
+    <div id="mini-roadmap"></div>
+    <nav id="auto-toc" aria-label="On this page"></nav>
+  </aside>
+
+  <main class="prose">
+    <p class="chapter-eyebrow">Chapter 2 of 14</p>
+    <h1>Linear Algebra</h1>
+    <p><em>Vectors as arrows. Matrices as machines that transform space. The dot product, which is half the work of a neuron.</em></p>
+
+    <section id="why-vectors">
+      <h2>Why vectors</h2>
+      <p>
+        A neural network rarely takes one number as input. It takes a list: the 784 pixel values of a small image, the 300 numbers describing a word's "meaning," the 4096 features of a hidden layer. Doing arithmetic on long lists is tedious if we write it out one component at a time. Linear algebra is the language for doing it compactly.
+      </p>
+      <p>
+        Two questions to keep in mind throughout this chapter:
+      </p>
+      <ul>
+        <li><strong>What does a vector represent?</strong> Sometimes a point in space, sometimes a direction, sometimes a list of features.</li>
+        <li><strong>What does a matrix do?</strong> A matrix is a function that takes a vector and produces another vector — a transformation of space.</li>
+      </ul>
+    </section>
+
+    <section id="vectors">
+      <h2>Vectors</h2>
+      <p>
+        A <strong>vector</strong> is an ordered list of numbers. We write it as a column:
+      </p>
+      $$ \mathbf{v} = \begin{bmatrix} 3 \\ -1 \\ 2 \end{bmatrix}. $$
+      <p>
+        The boldface $\mathbf{v}$ tells you it is a vector, not a single number. The number of entries is the <strong>dimension</strong>; we say $\mathbf{v} \in \mathbb{R}^3$ (a vector in 3-dimensional real space). In a neural network the dimension can be in the thousands.
+      </p>
+      <p>
+        Geometrically, a 2D or 3D vector is most easily pictured as an arrow from the origin to the point with those coordinates. It has a length and a direction. In higher dimensions we lose the picture, but the arithmetic is identical.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 400 280" width="400" aria-labelledby="fig-vec-arrow-title" role="img">
+          <title id="fig-vec-arrow-title">A 2D vector drawn as an arrow from the origin</title>
+          <defs>
+            <marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a6f97"/>
+            </marker>
+          </defs>
+          <!-- grid -->
+          <g stroke="#e7e1d6" stroke-width="1">
+            <line x1="40"  y1="40" x2="40"  y2="240"/>
+            <line x1="100" y1="40" x2="100" y2="240"/>
+            <line x1="160" y1="40" x2="160" y2="240"/>
+            <line x1="220" y1="40" x2="220" y2="240"/>
+            <line x1="280" y1="40" x2="280" y2="240"/>
+            <line x1="340" y1="40" x2="340" y2="240"/>
+            <line x1="40" y1="40"  x2="340" y2="40"/>
+            <line x1="40" y1="100" x2="340" y2="100"/>
+            <line x1="40" y1="160" x2="340" y2="160"/>
+            <line x1="40" y1="220" x2="340" y2="220"/>
+          </g>
+          <!-- axes -->
+          <line x1="40" y1="220" x2="340" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="40"  x2="40"  y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+          <!-- vector v=(3,2) -> 3 cells right, 2 cells up -->
+          <line x1="40" y1="220" x2="220" y2="100" stroke="#2a6f97" stroke-width="3" marker-end="url(#arr1)"/>
+          <circle cx="220" cy="100" r="4" fill="#2a6f97"/>
+          <text x="232" y="92" font-family="Georgia, serif" font-size="14" fill="#2a6f97">v = (3, 2)</text>
+          <text x="34" y="240" font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="end">0</text>
+          <text x="220" y="258" font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="middle">3</text>
+          <text x="34" y="104" font-family="Georgia, serif" font-size="11" fill="#4a4a4a" text-anchor="end">2</text>
+        </svg>
+        <figcaption>The vector $\mathbf{v} = (3, 2)$ as an arrow from the origin to the point $(3,2)$.</figcaption>
+      </figure>
+    </section>
+
+    <section id="vector-arithmetic">
+      <h2>Vector addition and scaling</h2>
+      <p>
+        Two operations on vectors do everything else:
+      </p>
+      <ol>
+        <li><strong>Addition</strong>: add component-by-component.
+          $$ \begin{bmatrix} 1\\2\\3\end{bmatrix} + \begin{bmatrix} 4\\-1\\0\end{bmatrix} = \begin{bmatrix} 5\\1\\3\end{bmatrix}. $$
+          Geometrically, place the second arrow at the tip of the first; their sum is the arrow from the start of the first to the tip of the second.
+        </li>
+        <li><strong>Scalar multiplication</strong>: multiply every component by a single number $c$ (a "scalar").
+          $$ 2 \cdot \begin{bmatrix} 1\\2\\3 \end{bmatrix} = \begin{bmatrix} 2\\4\\6 \end{bmatrix}. $$
+          Geometrically, this stretches the arrow (or flips and stretches it if $c < 0$).
+        </li>
+      </ol>
+      <p>
+        Any vector you can reach from a starting set using only these two operations is called a <strong>linear combination</strong> of the starting set. This is the entire content of the word "linear" in linear algebra.
+      </p>
+    </section>
+
+    <section id="dot-product">
+      <h2>The dot product</h2>
+      <p>
+        Take two vectors of the same dimension. Multiply them element-by-element, then sum:
+      </p>
+      $$ \mathbf{a} \cdot \mathbf{b} \;=\; \sum_{i=1}^{n} a_i b_i. $$
+      <p>
+        Concretely:
+      </p>
+      $$ \begin{bmatrix} 2 \\ -1 \\ 3 \end{bmatrix} \cdot \begin{bmatrix} 1 \\ 4 \\ 2 \end{bmatrix} \;=\; (2)(1) + (-1)(4) + (3)(2) \;=\; 4. $$
+      <p>
+        That tiny formula is the heart of every neural network. A single neuron computes a dot product between an input vector $\mathbf{x}$ and a weight vector $\mathbf{w}$, adds a bias, and passes the result through a nonlinearity. We will see this verbatim in Chapter 6.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Two readings of the dot product</div>
+        <p><strong>Algebraic:</strong> sum the products of matching entries.</p>
+        <p><strong>Geometric:</strong> $\mathbf{a} \cdot \mathbf{b} = \|\mathbf{a}\|\, \|\mathbf{b}\| \cos\theta$ where $\theta$ is the angle between them. So a dot product measures "how much the two vectors point the same way." Aligned: large positive. Perpendicular: zero. Opposite: large negative.</p>
+      </div>
+    </section>
+
+    <section id="length">
+      <h2>Length and unit vectors</h2>
+      <p>
+        The <strong>length</strong> (or <strong>norm</strong>) of a vector is its Pythagorean distance from the origin:
+      </p>
+      $$ \|\mathbf{v}\| \;=\; \sqrt{v_1^2 + v_2^2 + \cdots + v_n^2} \;=\; \sqrt{\mathbf{v} \cdot \mathbf{v}}. $$
+      <p>
+        A <strong>unit vector</strong> is one with length $1$. To make a unit vector pointing in the direction of $\mathbf{v}$, divide by its length: $\mathbf{v} / \|\mathbf{v}\|$. We will use this when we talk about gradients (Chapter 4) and attention (Chapter 13).
+      </p>
+    </section>
+
+    <section id="matrices">
+      <h2>Matrices</h2>
+      <p>
+        A <strong>matrix</strong> is a rectangular array of numbers. We write a matrix with capital boldface and specify its shape as <em>(rows) by (columns)</em>:
+      </p>
+      $$ \mathbf{A} = \begin{bmatrix} 2 & 1 & 0 \\ -1 & 3 & 4 \end{bmatrix} \;\in\; \mathbb{R}^{2 \times 3}. $$
+      <p>
+        A vector is just a special matrix with a single column. So $\mathbf{v} \in \mathbb{R}^3$ is the same as $\mathbf{v} \in \mathbb{R}^{3 \times 1}$ if you want.
+      </p>
+      <p>
+        The most useful way to think about a matrix is as a <strong>function on vectors</strong>: feed it a vector, get a vector back. The function is called <em>matrix-vector multiplication</em>.
+      </p>
+    </section>
+
+    <section id="matrix-vector">
+      <h2>Matrix-vector multiplication</h2>
+      <p>
+        If $\mathbf{A} \in \mathbb{R}^{m \times n}$ and $\mathbf{x} \in \mathbb{R}^n$, the product $\mathbf{A}\mathbf{x}$ is a vector in $\mathbb{R}^m$. Its $i$-th entry is the dot product of the $i$-th row of $\mathbf{A}$ with $\mathbf{x}$:
+      </p>
+      $$ (\mathbf{A}\mathbf{x})_i \;=\; \sum_{j=1}^{n} A_{ij}\, x_j. $$
+      <p>
+        Worked example. Let
+      </p>
+      $$ \mathbf{A} = \begin{bmatrix} 2 & 1 \\ 0 & 3 \\ -1 & 4 \end{bmatrix}, \qquad \mathbf{x} = \begin{bmatrix} 5 \\ 2 \end{bmatrix}. $$
+      <p>
+        Then
+      </p>
+      $$ \mathbf{A}\mathbf{x} = \begin{bmatrix} 2(5)+1(2) \\ 0(5)+3(2) \\ -1(5)+4(2) \end{bmatrix} = \begin{bmatrix} 12 \\ 6 \\ 3 \end{bmatrix}. $$
+      <p>
+        Two important shape rules:
+      </p>
+      <ul>
+        <li>The number of <em>columns</em> of $\mathbf{A}$ must equal the dimension of $\mathbf{x}$.</li>
+        <li>The result has as many entries as $\mathbf{A}$ has <em>rows</em>.</li>
+      </ul>
+      <p>
+        In neural-network notation, $\mathbf{W}\mathbf{x} + \mathbf{b}$ is one whole layer's worth of computation. Each row of $\mathbf{W}$ is a single neuron's weights; each entry of $\mathbf{W}\mathbf{x}$ is one neuron's pre-activation.
+      </p>
+    </section>
+
+    <section id="matrix-as-transformation">
+      <h2>A matrix as a transformation</h2>
+      <p>
+        Try this. Take the four corners of the unit square in 2D — the points $(0,0)$, $(1,0)$, $(1,1)$, $(0,1)$ — and apply
+      </p>
+      $$ \mathbf{A} = \begin{bmatrix} 2 & 0.5 \\ 0 & 1 \end{bmatrix}. $$
+      <p>
+        Each corner becomes a new point. Draw the new shape and you'll see a parallelogram: the square has been stretched horizontally by a factor of $2$ and skewed.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 240" width="480" aria-labelledby="fig-mat-trans-title" role="img">
+          <title id="fig-mat-trans-title">A matrix transforming the unit square into a parallelogram</title>
+          <!-- left: unit square -->
+          <g transform="translate(20,20)">
+            <line x1="0" y1="200" x2="180" y2="200" stroke="#1a1a1a"/>
+            <line x1="0" y1="0"   x2="0"   y2="200" stroke="#1a1a1a"/>
+            <rect x="0" y="120" width="80" height="80" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2"/>
+            <text x="40" y="170" font-family="Georgia, serif" font-size="13" text-anchor="middle" fill="#1a4d6b">unit square</text>
+            <text x="90" y="216" font-family="Georgia, serif" font-size="11" fill="#4a4a4a">x</text>
+            <text x="-12" y="120" font-family="Georgia, serif" font-size="11" fill="#4a4a4a">y</text>
+          </g>
+          <!-- arrow -->
+          <text x="220" y="130" font-family="Georgia, serif" font-size="22" fill="#4a4a4a" text-anchor="middle">→</text>
+          <text x="220" y="155" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" text-anchor="middle">A</text>
+          <!-- right: parallelogram. Square corners (0,0),(1,0),(1,1),(0,1) -> A*x with A=[[2,.5],[0,1]] yields (0,0),(2,0),(2.5,1),(.5,1) -->
+          <g transform="translate(260,20)">
+            <line x1="0" y1="200" x2="200" y2="200" stroke="#1a1a1a"/>
+            <line x1="0" y1="0"   x2="0"   y2="200" stroke="#1a1a1a"/>
+            <!-- scale: 1 unit = 40px. y inverted. base (0,0)=(0,200) -->
+            <polygon points="0,200 80,200 100,160 20,160" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
+            <text x="60" y="186" font-family="Georgia, serif" font-size="13" text-anchor="middle" fill="#8c4a14">parallelogram</text>
+          </g>
+        </svg>
+        <figcaption>The matrix sends the unit square to a parallelogram. A matrix <em>is</em> the rule that bends space.</figcaption>
+      </figure>
+
+      <p>
+        Two facts that follow:
+      </p>
+      <ul>
+        <li>Matrix multiplication is <em>linear</em>: $\mathbf{A}(\mathbf{x} + \mathbf{y}) = \mathbf{A}\mathbf{x} + \mathbf{A}\mathbf{y}$ and $\mathbf{A}(c\,\mathbf{x}) = c \,\mathbf{A}\mathbf{x}$.</li>
+        <li>The columns of $\mathbf{A}$ tell you where the basis vectors $\mathbf{e}_1, \mathbf{e}_2, \ldots$ end up. Once you know that, the action on every other vector is determined by linearity.</li>
+      </ul>
+    </section>
+
+    <section id="matrix-matrix">
+      <h2>Matrix-matrix multiplication</h2>
+      <p>
+        Composing two transformations is itself a transformation, and we represent it by multiplying the two matrices. If $\mathbf{A} \in \mathbb{R}^{m \times n}$ and $\mathbf{B} \in \mathbb{R}^{n \times p}$, then $\mathbf{C} = \mathbf{A}\mathbf{B} \in \mathbb{R}^{m \times p}$ with
+      </p>
+      $$ C_{ij} = \sum_{k=1}^{n} A_{ik}\, B_{kj}. $$
+      <p>
+        Same shape rule as before: inner dimensions must match ($n$ here). Read it as "row $i$ of $\mathbf{A}$ dotted with column $j$ of $\mathbf{B}$."
+      </p>
+      <p>
+        A two-layer neural network is just $\mathbf{A}\mathbf{B}\mathbf{x}$ with a nonlinearity inserted somewhere — without the nonlinearity, it would collapse into a single matrix because $\mathbf{A}\mathbf{B}$ is itself a matrix. We will see that point made carefully in Chapter 8.
+      </p>
+    </section>
+
+    <section id="transpose">
+      <h2>The transpose</h2>
+      <p>
+        Flipping a matrix on its diagonal — turning rows into columns — is called the <strong>transpose</strong>, written $\mathbf{A}^\top$. It satisfies $(\mathbf{A}\mathbf{B})^\top = \mathbf{B}^\top \mathbf{A}^\top$ (note the order flip) and $(\mathbf{A}^\top)^\top = \mathbf{A}$. The dot product can be written as a matrix product: $\mathbf{a} \cdot \mathbf{b} = \mathbf{a}^\top \mathbf{b}$.
+      </p>
+      <p>
+        We will see the transpose enter every backpropagation derivation in Chapter 9. When you take a gradient of a matrix-vector multiplication, the matrix shows up transposed. This is not magic; it is bookkeeping forced by the chain rule.
+      </p>
+    </section>
+
+    <section id="vectors-as-data">
+      <h2>Vectors as data, matrices as parameters</h2>
+      <p>
+        A useful mental model going forward:
+      </p>
+      <ul>
+        <li>A <strong>vector</strong> is usually one example: one image's pixels, one word's embedding, one neuron layer's activations.</li>
+        <li>A <strong>matrix</strong> is usually a parameter: the weights of a layer connecting one set of activations to the next. Or, when you stack many examples into one big object, it is a batch of vectors.</li>
+      </ul>
+      <p>
+        The shape conventions for "vector of inputs $\to$ matrix of weights $\to$ vector of outputs" feel arbitrary at first; once you have done a few worked examples (Chapters 6 and 8) they become second nature.
+      </p>
+    </section>
+
+    <section id="check-yourself">
+      <h2>Check yourself</h2>
+      <ol>
+        <li>What is $\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix} \cdot \begin{bmatrix} 4 \\ 0 \\ -1 \end{bmatrix}$?</li>
+        <li>What is the length of $(3, 4)$?</li>
+        <li>If $\mathbf{A} \in \mathbb{R}^{4 \times 7}$ and $\mathbf{x} \in \mathbb{R}^7$, what shape is $\mathbf{A}\mathbf{x}$?</li>
+        <li>What does "the dot product is zero" mean geometrically?</li>
+        <li>Why must matrix multiplication match inner dimensions?</li>
+      </ol>
+      <p>
+        Answers: $4 + 0 - 3 = 1$; $\sqrt{9+16}=5$; a vector in $\mathbb{R}^4$; the two vectors are perpendicular; because the inner dimension counts how many products are summed, and that has to be a single agreed-upon number.
+      </p>
+    </section>
+
+    <footer class="chapter-end" data-complete-marker>
+      <strong>Chapter 2 complete.</strong>
+      <span class="next-link">Next: <a href="03-calculus-derivatives.html">Chapter 3 — Derivatives →</a></span>
+    </footer>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <p><a href="../index.html">← Back to roadmap</a> · <button id="reset-progress">Reset progress</button></p>
+</footer>
+
+<script src="../js/progress.js"></script>
+<script src="../js/roadmap.js"></script>
+<script src="../js/chapter.js"></script>
+</body>
+</html>
