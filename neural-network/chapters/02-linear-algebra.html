@@ -191,48 +191,199 @@
 
     <section id="matrix-as-transformation">
       <h2>A matrix as a transformation</h2>
+
       <p>
-        Try this. Take the four corners of the unit square in 2D — the points $(0,0)$, $(1,0)$, $(1,1)$, $(0,1)$ — and apply
+        A matrix is more than a grid of numbers — it is a <strong>rule for moving every point in 2D space to a new point</strong>. The grid encodes the rule, but the rule itself is geometric. Once you can see it, the algebra in the previous section stops feeling arbitrary. We'll build the picture in three steps: <em>basis vectors</em>, the <em>unit square</em>, and the rule that ties them together.
+      </p>
+
+      <h3 id="basis-vectors">Basis vectors</h3>
+      <p>
+        The two simplest column vectors in 2D are
+      </p>
+      $$ \mathbf{e}_1 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}, \qquad \mathbf{e}_2 = \begin{bmatrix} 0 \\ 1 \end{bmatrix}. $$
+      <p>
+        $\mathbf{e}_1$ is one step along the $x$-axis and $\mathbf{e}_2$ is one step along the $y$-axis. They are called the <strong>standard basis</strong> because every column vector
+      </p>
+      $$ \mathbf{x} = \begin{bmatrix} x_1 \\ x_2 \end{bmatrix} $$
+      <p>
+        is built out of them by stacking the entries one above the other:
+      </p>
+      $$ \begin{bmatrix} x_1 \\ x_2 \end{bmatrix} \;=\; x_1 \begin{bmatrix} 1 \\ 0 \end{bmatrix} + x_2 \begin{bmatrix} 0 \\ 1 \end{bmatrix} \;=\; x_1\,\mathbf{e}_1 + x_2\,\mathbf{e}_2. $$
+      <p>
+        Concrete example: $\begin{bmatrix} 3 \\ 2 \end{bmatrix} \;=\; 3\,\mathbf{e}_1 + 2\,\mathbf{e}_2$ — three units along $x$, two units along $y$. This will matter in a moment: if a transformation tells us where $\mathbf{e}_1$ and $\mathbf{e}_2$ land, that's enough to know where every column vector lands, because every column vector is just a recipe of how many $\mathbf{e}_1$'s and how many $\mathbf{e}_2$'s to combine.
+      </p>
+
+      <h3 id="unit-square">The unit square</h3>
+      <p>
+        The simplest closed shape in 2D is the <strong>unit square</strong> — the square whose four corners we collect into a single $2 \times 4$ matrix, one corner per column:
+      </p>
+      $$ \mathbf{S} \;=\; \Bigl[\; \mathbf{c}_1 \;\; \mathbf{c}_2 \;\; \mathbf{c}_3 \;\; \mathbf{c}_4 \;\Bigr] \;=\; \begin{bmatrix} 0 & 1 & 1 & 0 \\ 0 & 0 & 1 & 1 \end{bmatrix}. $$
+      <p>
+        Reading the columns: $\mathbf{c}_1 = \begin{bmatrix} 0 \\ 0 \end{bmatrix}$ is the origin, $\mathbf{c}_2 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}$, $\mathbf{c}_3 = \begin{bmatrix} 1 \\ 1 \end{bmatrix}$, $\mathbf{c}_4 = \begin{bmatrix} 0 \\ 1 \end{bmatrix}$. Its two edges starting at the origin are exactly $\mathbf{e}_1$ (the bottom edge) and $\mathbf{e}_2$ (the left edge). We use it as a <em>test shape</em>: if we apply a matrix to its four corners and watch where they land, the new shape gives us a complete picture of what the matrix does to all of 2D.
+      </p>
+
+      <h3 id="the-rule">The rule</h3>
+
+      <div class="callout intuition">
+        <div class="callout-title">Read the columns</div>
+        <p>The columns of $\mathbf{A}$ are <strong>where the basis vectors land</strong>. The first column says where $\mathbf{e}_1$ goes. The second column says where $\mathbf{e}_2$ goes. That's it — once you know those two columns, you know what $\mathbf{A}$ does to <em>every</em> column vector.</p>
+      </div>
+
+      <p>
+        Why is this true? Compute $\mathbf{A}\mathbf{e}_1$ directly:
+      </p>
+      $$ \mathbf{A}\,\mathbf{e}_1 \;=\; \mathbf{A}\begin{bmatrix} 1 \\ 0 \end{bmatrix} \;=\; 1 \cdot (\text{first column of } \mathbf{A}) + 0 \cdot (\text{second column of } \mathbf{A}) \;=\; \text{first column of } \mathbf{A}. $$
+      <p>
+        Same idea for $\mathbf{e}_2$ — the multiplication picks out the second column. And because matrix multiplication is <em>linear</em>,
+      </p>
+      $$ \mathbf{A}\mathbf{x} \;=\; \mathbf{A}\bigl(x_1\,\mathbf{e}_1 + x_2\,\mathbf{e}_2\bigr) \;=\; x_1\,(\mathbf{A}\mathbf{e}_1) + x_2\,(\mathbf{A}\mathbf{e}_2). $$
+      <p>
+        So $\mathbf{A}\mathbf{x}$ is the <em>same combination</em> of the two new columns that $\mathbf{x}$ was of $\mathbf{e}_1$ and $\mathbf{e}_2$. The whole game is reading the columns.
+      </p>
+
+      <h3 id="worked">Worked example</h3>
+      <p>
+        Take
       </p>
       $$ \mathbf{A} = \begin{bmatrix} 2 & 0.5 \\ 0 & 1 \end{bmatrix}. $$
       <p>
-        Each corner becomes a new point. Draw the new shape and you'll see a parallelogram: the square has been stretched horizontally by a factor of $2$ and skewed.
+        Reading the columns as instructions:
+      </p>
+      <ul>
+        <li>$\mathbf{e}_1 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}$ becomes $\mathbf{A}\mathbf{e}_1 = \begin{bmatrix} 2 \\ 0 \end{bmatrix}$ — twice as long along the $x$-axis, still on the $x$-axis.</li>
+        <li>$\mathbf{e}_2 = \begin{bmatrix} 0 \\ 1 \end{bmatrix}$ becomes $\mathbf{A}\mathbf{e}_2 = \begin{bmatrix} 0.5 \\ 1 \end{bmatrix}$ — same height, but tilted toward $+x$.</li>
+      </ul>
+      <p>
+        In plain English: $\mathbf{A}$ <em>stretches</em> the plane horizontally by a factor of $2$ and <em>shears</em> it so that what used to be straight up now leans rightward.
+      </p>
+
+      <p>
+        Now watch each corner of the unit square. Every corner is a tiny recipe of $\mathbf{e}_1$'s and $\mathbf{e}_2$'s, so its new location is the same recipe of the two new columns:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Original corner</th>
+            <th>As a combination</th>
+            <th>New corner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>$\begin{bmatrix} 0 \\ 0 \end{bmatrix}$</td>
+            <td>$0\,\mathbf{e}_1 + 0\,\mathbf{e}_2$</td>
+            <td>$\begin{bmatrix} 0 \\ 0 \end{bmatrix}$ &nbsp;<span style="color:var(--ink-soft)">— the origin never moves</span></td>
+          </tr>
+          <tr>
+            <td>$\begin{bmatrix} 1 \\ 0 \end{bmatrix}$</td>
+            <td>$\mathbf{e}_1$</td>
+            <td>$\begin{bmatrix} 2 \\ 0 \end{bmatrix}$</td>
+          </tr>
+          <tr>
+            <td>$\begin{bmatrix} 0 \\ 1 \end{bmatrix}$</td>
+            <td>$\mathbf{e}_2$</td>
+            <td>$\begin{bmatrix} 0.5 \\ 1 \end{bmatrix}$</td>
+          </tr>
+          <tr>
+            <td>$\begin{bmatrix} 1 \\ 1 \end{bmatrix}$</td>
+            <td>$\mathbf{e}_1 + \mathbf{e}_2$</td>
+            <td>$\begin{bmatrix} 2 \\ 0 \end{bmatrix} + \begin{bmatrix} 0.5 \\ 1 \end{bmatrix} = \begin{bmatrix} 2.5 \\ 1 \end{bmatrix}$</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        Connect the four new corners and you get a <strong>parallelogram</strong> whose two sides at the origin are the columns of $\mathbf{A}$. The shape is no longer a square because the columns are no longer perpendicular.
       </p>
 
       <figure>
-        <svg viewBox="0 0 480 240" width="480" aria-labelledby="fig-mat-trans-title" role="img">
-          <title id="fig-mat-trans-title">A matrix transforming the unit square into a parallelogram</title>
-          <!-- left: unit square -->
-          <g transform="translate(20,20)">
-            <line x1="0" y1="200" x2="180" y2="200" stroke="#1a1a1a"/>
-            <line x1="0" y1="0"   x2="0"   y2="200" stroke="#1a1a1a"/>
-            <rect x="0" y="120" width="80" height="80" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2"/>
-            <text x="40" y="170" font-family="Georgia, serif" font-size="13" text-anchor="middle" fill="#1a4d6b">unit square</text>
-            <text x="90" y="216" font-family="Georgia, serif" font-size="11" fill="#4a4a4a">x</text>
-            <text x="-12" y="120" font-family="Georgia, serif" font-size="11" fill="#4a4a4a">y</text>
+        <svg viewBox="0 0 600 280" width="600" aria-labelledby="fig-mat-trans-title" role="img">
+          <title id="fig-mat-trans-title">A matrix transforms the basis vectors; the unit square becomes a parallelogram</title>
+          <defs>
+            <marker id="arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#c0392b"/>
+            </marker>
+            <marker id="arr-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a4d6b"/>
+            </marker>
+          </defs>
+
+          <!-- LEFT: unit square. Origin at (50, 240). 1 unit = 50 px. -->
+          <g>
+            <!-- light grid -->
+            <g stroke="#e6dfd2" stroke-width="1">
+              <line x1="50"  y1="40"  x2="50"  y2="240"/>
+              <line x1="100" y1="40"  x2="100" y2="240"/>
+              <line x1="150" y1="40"  x2="150" y2="240"/>
+              <line x1="200" y1="40"  x2="200" y2="240"/>
+              <line x1="250" y1="40"  x2="250" y2="240"/>
+              <line x1="50"  y1="40"  x2="250" y2="40"/>
+              <line x1="50"  y1="90"  x2="250" y2="90"/>
+              <line x1="50"  y1="140" x2="250" y2="140"/>
+              <line x1="50"  y1="190" x2="250" y2="190"/>
+            </g>
+            <!-- axes -->
+            <line x1="50" y1="240" x2="260" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+            <line x1="50" y1="240" x2="50"  y2="40"  stroke="#1a1a1a" stroke-width="1.5"/>
+            <!-- unit square -->
+            <rect x="50" y="190" width="50" height="50" fill="#d6e6f0" stroke="#2a6f97" stroke-width="2"/>
+            <!-- basis vectors as arrows -->
+            <line x1="50" y1="240" x2="100" y2="240" stroke="#c0392b" stroke-width="3" marker-end="url(#arr-r)"/>
+            <line x1="50" y1="240" x2="50"  y2="190" stroke="#1a4d6b" stroke-width="3" marker-end="url(#arr-b)"/>
+            <text x="78" y="258" font-family="Georgia, serif" font-size="13" fill="#c0392b" text-anchor="middle">e₁ = (1, 0)</text>
+            <text x="32" y="218" font-family="Georgia, serif" font-size="13" fill="#1a4d6b" text-anchor="end">e₂ = (0, 1)</text>
+            <text x="155" y="22" font-family="Georgia, serif" font-size="13" fill="#1a4d6b" text-anchor="middle">unit square</text>
           </g>
-          <!-- arrow -->
-          <text x="220" y="130" font-family="Georgia, serif" font-size="22" fill="#4a4a4a" text-anchor="middle">→</text>
-          <text x="220" y="155" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" text-anchor="middle">A</text>
-          <!-- right: parallelogram. Square corners (0,0),(1,0),(1,1),(0,1) -> A*x with A=[[2,.5],[0,1]] yields (0,0),(2,0),(2.5,1),(.5,1) -->
-          <g transform="translate(260,20)">
-            <line x1="0" y1="200" x2="200" y2="200" stroke="#1a1a1a"/>
-            <line x1="0" y1="0"   x2="0"   y2="200" stroke="#1a1a1a"/>
-            <!-- scale: 1 unit = 40px. y inverted. base (0,0)=(0,200) -->
-            <polygon points="0,200 80,200 100,160 20,160" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
-            <text x="60" y="186" font-family="Georgia, serif" font-size="13" text-anchor="middle" fill="#8c4a14">parallelogram</text>
+
+          <!-- arrow / A label -->
+          <text x="305" y="135" font-family="Georgia, serif" font-size="26" fill="#4a4a4a" text-anchor="middle">→</text>
+          <text x="305" y="160" font-family="Georgia, serif" font-size="13" fill="#4a4a4a" text-anchor="middle">apply A</text>
+
+          <!-- RIGHT: parallelogram. Origin at (350, 240). 1 unit = 50 px. -->
+          <g>
+            <g stroke="#e6dfd2" stroke-width="1">
+              <line x1="350" y1="40"  x2="350" y2="240"/>
+              <line x1="400" y1="40"  x2="400" y2="240"/>
+              <line x1="450" y1="40"  x2="450" y2="240"/>
+              <line x1="500" y1="40"  x2="500" y2="240"/>
+              <line x1="550" y1="40"  x2="550" y2="240"/>
+              <line x1="350" y1="40"  x2="580" y2="40"/>
+              <line x1="350" y1="90"  x2="580" y2="90"/>
+              <line x1="350" y1="140" x2="580" y2="140"/>
+              <line x1="350" y1="190" x2="580" y2="190"/>
+            </g>
+            <line x1="350" y1="240" x2="585" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
+            <line x1="350" y1="240" x2="350" y2="40"  stroke="#1a1a1a" stroke-width="1.5"/>
+            <!-- parallelogram: corners (0,0),(2,0),(2.5,1),(0.5,1) -> SVG (350,240),(450,240),(475,190),(375,190) -->
+            <polygon points="350,240 450,240 475,190 375,190" fill="#fbe9d8" stroke="#c97b3c" stroke-width="2"/>
+            <!-- transformed basis vectors -->
+            <line x1="350" y1="240" x2="450" y2="240" stroke="#c0392b" stroke-width="3" marker-end="url(#arr-r)"/>
+            <line x1="350" y1="240" x2="375" y2="190" stroke="#1a4d6b" stroke-width="3" marker-end="url(#arr-b)"/>
+            <text x="400" y="258" font-family="Georgia, serif" font-size="13" fill="#c0392b" text-anchor="middle">A·e₁ = (2, 0)</text>
+            <text x="368" y="180" font-family="Georgia, serif" font-size="13" fill="#1a4d6b">A·e₂ = (0.5, 1)</text>
+            <text x="465" y="22" font-family="Georgia, serif" font-size="13" fill="#8c4a14" text-anchor="middle">parallelogram</text>
           </g>
         </svg>
-        <figcaption>The matrix sends the unit square to a parallelogram. A matrix <em>is</em> the rule that bends space.</figcaption>
+        <figcaption>Both grids are at the same scale (one square = one unit). The red arrow is $\mathbf{e}_1$ and the blue arrow is $\mathbf{e}_2$. The matrix sends red to the first column $(2, 0)$ and blue to the second column $(0.5, 1)$. Because $\mathbf{e}_2$ now leans toward $+x$, the unit square tilts and stretches into a parallelogram. Notice it's also visibly bigger — its area is the determinant of $\mathbf{A}$, which is $2$.</figcaption>
       </figure>
 
+      <div class="callout warn">
+        <div class="callout-title">A common confusion</div>
+        <p>The two columns of $\mathbf{A}$ are <em>not</em> two transformations applied one after the other ("first stretch by $(2, 0)$, then shear by $(0.5, 1)$"). They are two destinations: where $\mathbf{e}_1$ ends up, and where $\mathbf{e}_2$ ends up. The matrix is a <em>single</em> transformation, fully described once you know those two columns.</p>
+      </div>
+
       <p>
-        Two facts that follow:
+        Two takeaways:
       </p>
       <ul>
-        <li>Matrix multiplication is <em>linear</em>: $\mathbf{A}(\mathbf{x} + \mathbf{y}) = \mathbf{A}\mathbf{x} + \mathbf{A}\mathbf{y}$ and $\mathbf{A}(c\,\mathbf{x}) = c \,\mathbf{A}\mathbf{x}$.</li>
-        <li>The columns of $\mathbf{A}$ tell you where the basis vectors $\mathbf{e}_1, \mathbf{e}_2, \ldots$ end up. Once you know that, the action on every other vector is determined by linearity.</li>
+        <li>Matrix multiplication is <em>linear</em>: $\mathbf{A}(\mathbf{x} + \mathbf{y}) = \mathbf{A}\mathbf{x} + \mathbf{A}\mathbf{y}$ and $\mathbf{A}(c\,\mathbf{x}) = c \,\mathbf{A}\mathbf{x}$. (We just used this to track the corners.)</li>
+        <li>To read a matrix at a glance, look at its columns. Each column is the destination of one basis vector.</li>
       </ul>
+
+      <p>
+        This is exactly how to read a neural network's weight matrix $\mathbf{W}$. Each column of $\mathbf{W}$ tells you where one input direction lands in the layer's output space — the same picture, just in higher dimensions. A whole layer is a transformation that bends input space, and the network is many such transformations stacked back-to-back with nonlinearities in between.
+      </p>
     </section>
 
     <section id="matrix-matrix">
@@ -252,11 +403,43 @@
     <section id="transpose">
       <h2>The transpose</h2>
       <p>
-        Flipping a matrix on its diagonal — turning rows into columns — is called the <strong>transpose</strong>, written $\mathbf{A}^\top$. It satisfies $(\mathbf{A}\mathbf{B})^\top = \mathbf{B}^\top \mathbf{A}^\top$ (note the order flip) and $(\mathbf{A}^\top)^\top = \mathbf{A}$. The dot product can be written as a matrix product: $\mathbf{a} \cdot \mathbf{b} = \mathbf{a}^\top \mathbf{b}$.
+        Flipping a matrix on its diagonal — turning row $i$ into column $i$ — is called the <strong>transpose</strong>, written $\mathbf{A}^\top$. An $m \times n$ matrix becomes $n \times m$. A small example:
       </p>
+      $$ \mathbf{A} = \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \end{bmatrix} \;\;\Longrightarrow\;\; \mathbf{A}^\top = \begin{bmatrix} 1 & 4 \\ 2 & 5 \\ 3 & 6 \end{bmatrix}. $$
       <p>
-        We will see the transpose enter every backpropagation derivation in Chapter 9. When you take a gradient of a matrix-vector multiplication, the matrix shows up transposed. This is not magic; it is bookkeeping forced by the chain rule.
+        Two algebraic identities you will use constantly:
       </p>
+      $$ (\mathbf{A}^\top)^\top = \mathbf{A}, \qquad (\mathbf{A}\mathbf{B})^\top = \mathbf{B}^\top \mathbf{A}^\top. $$
+      <p>
+        The order flip in the second identity is the rule that propagates transposes through long matrix products in backpropagation derivations. So why do we transpose in the first place?
+      </p>
+
+      <h3 id="transpose-uses">Why we transpose</h3>
+
+      <p>
+        <strong>1. Dot product as a matrix product.</strong> A row vector ($1 \times n$) times a column vector ($n \times 1$) gives a single number — exactly the dot product. So if $\mathbf{a}$ and $\mathbf{b}$ are both column vectors,
+      </p>
+      $$ \mathbf{a} \cdot \mathbf{b} \;=\; \mathbf{a}^\top \mathbf{b}. $$
+      <p>
+        This single notational trick lets us write entire layers without a separate "dot" symbol — everything becomes matrix multiplication.
+      </p>
+
+      <p>
+        <strong>2. Reversing the direction of a linear map.</strong> A matrix $\mathbf{W}$ of shape $m \times n$ takes inputs (in $\mathbb{R}^n$) to outputs (in $\mathbb{R}^m$). Often we need the <em>opposite-direction</em> map — taking something living in output space and pushing it back to input space. The shape that fits is $n \times m$, which is exactly $\mathbf{W}^\top$. This is precisely the situation in backpropagation: an error signal lives in the output space, and to update the inputs or the weights we have to push that signal back through the layer. The matrix that does so is automatically $\mathbf{W}^\top$.
+      </p>
+
+      <p>
+        <strong>3. Symmetry.</strong> A matrix that satisfies $\mathbf{A}^\top = \mathbf{A}$ is called <strong>symmetric</strong>. Two important examples appear later: covariance matrices (Chapter 5) and Hessians of scalar functions. Symmetric matrices have especially clean structure — real eigenvalues and orthogonal eigenvectors — which is why optimization theory leans on them.
+      </p>
+
+      <p>
+        <strong>4. Shape bookkeeping.</strong> Often you have an expression like $\mathbf{x}^\top \mathbf{A} \mathbf{y}$ and need to know its shape. Reading left to right: $1 \times n$ times $n \times m$ times $m \times 1$ collapses to $1 \times 1$ — a single number (a <em>quadratic form</em>). The transposes are how you make the dimensions line up so the product even exists.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">A glimpse of backpropagation</div>
+        <p>When you take a gradient of $\mathbf{y} = \mathbf{W}\mathbf{x}$ with respect to $\mathbf{x}$, the matrix $\mathbf{W}$ shows up <em>transposed</em>. This is not magic; it is bookkeeping forced by the <strong>chain rule</strong> — the rule for differentiating a composition of functions. We introduce it in Chapter 3 (single-variable) and extend it to vectors and matrices in Chapter 4. Every backpropagation derivation in Chapter 9 then uses this fact.</p>
+      </div>
     </section>
 
     <section id="vectors-as-data">
