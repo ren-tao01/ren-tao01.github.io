@@ -27,20 +27,25 @@
     const tocHost = document.getElementById('auto-toc');
     if (!main || !tocHost) return;
 
-    const headings = main.querySelectorAll('h2[id], h3[id]');
-    if (!headings.length) return;
+    // Chapter sections are <section id="..."><h2>Title</h2>...</section>.
+    // Use the section id as the anchor and the h2 text as the label.
+    const sections = main.querySelectorAll('section[id]');
+    if (!sections.length) return;
 
     const ol = document.createElement('ol');
-    headings.forEach(h => {
+    sections.forEach(sec => {
+      const h2 = sec.querySelector(':scope > h2');
+      if (!h2) return;
       const li = document.createElement('li');
       const a = document.createElement('a');
-      a.href = '#' + h.id;
-      a.textContent = h.textContent;
-      a.className = h.tagName.toLowerCase();
-      a.dataset.target = h.id;
+      a.href = '#' + sec.id;
+      a.textContent = h2.textContent;
+      a.className = 'h2';
+      a.dataset.target = sec.id;
       li.appendChild(a);
       ol.appendChild(li);
     });
+    if (!ol.childNodes.length) return;
     tocHost.innerHTML = '';
     const head = document.createElement('h4');
     head.textContent = 'On this page';
@@ -51,12 +56,11 @@
   function wireSectionObserver(chapterId) {
     const main = document.querySelector('main.prose');
     if (!main) return;
-    const headings = main.querySelectorAll('h2[id], h3[id]');
-    if (!headings.length) return;
+    const sections = main.querySelectorAll('section[id]');
+    if (!sections.length) return;
 
     const links = document.querySelectorAll('#auto-toc a');
-    const linkById = {};
-    links.forEach(a => { linkById[a.dataset.target] = a; });
+    const orderedIds = Array.from(sections).map(s => s.id);
 
     const visible = new Set();
     const obs = new IntersectionObserver(entries => {
@@ -64,16 +68,15 @@
         if (e.isIntersecting) visible.add(e.target.id);
         else visible.delete(e.target.id);
       });
-      // Pick the topmost visible heading
-      const ordered = Array.from(headings).map(h => h.id).filter(id => visible.has(id));
-      const active = ordered[0];
+      // Topmost intersecting section in document order is the active one.
+      const active = orderedIds.find(id => visible.has(id));
       links.forEach(a => a.classList.toggle('active', a.dataset.target === active));
       if (active && window.NN_PROGRESS) {
         window.NN_PROGRESS.markSectionVisited(chapterId, active);
       }
     }, { rootMargin: '-20% 0px -65% 0px', threshold: 0 });
 
-    headings.forEach(h => obs.observe(h));
+    sections.forEach(s => obs.observe(s));
   }
 
   function wireCompletionObserver(chapterId) {

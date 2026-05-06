@@ -426,6 +426,10 @@ main.prose .chapter-eyebrow {
 }
 main.prose h1 { margin-top: 0.2em; }
 main.prose section { margin-bottom: 1em; }
+/* Anchor-scroll target: leave ~22% of viewport above the section so it lands
+   inside the section-observer band (rootMargin '-20% 0 -65% 0' in chapter.js)
+   and the clicked TOC entry is the one that gets highlighted. */
+main.prose section[id], main.prose h3[id] { scroll-margin-top: 22vh; }
 
 /* callouts */
 .callout {

@@ -161,9 +161,24 @@
         In words: <strong>the derivative of a composition is the product of derivatives of the pieces, evaluated at the right places.</strong>
       </p>
 
+      <h3 id="chain-rule-intuition">Intuition: rates multiply along the chain</h3>
+      <p>
+        The chain rule is easier to remember as a sentence about rates than as a formula. Imagine three quantities linked in order: $x \to u \to y$. Suppose
+      </p>
+      <ul>
+        <li>when $x$ changes by a small amount, $u$ changes <strong>$3\times$</strong> as fast — that's $\dfrac{du}{dx} = 3$;</li>
+        <li>when $u$ changes by a small amount, $y$ changes <strong>$5\times$</strong> as fast — that's $\dfrac{dy}{du} = 5$.</li>
+      </ul>
+      <p>
+        How fast does $y$ change when $x$ changes? A nudge of size $\Delta x$ in $x$ produces a nudge of $3\,\Delta x$ in $u$, which then produces a nudge of $5 \cdot (3\,\Delta x) = 15\,\Delta x$ in $y$. So $\dfrac{dy}{dx} = 15 = 5 \times 3$. That is the chain rule — rates multiply along the chain.
+      </p>
+      <p>
+        And it is also why the rule is multiplication, not addition: each link in the chain <em>amplifies</em> the previous link's nudge by its own local rate. Two amplifiers in series multiply their gains; they do not add.
+      </p>
+
       <div class="callout intuition">
         <div class="callout-title">Why this matters for backprop</div>
-        <p>A neural network is dozens or hundreds of compositions stacked on top of each other. To find how a small change in a weight at the bottom affects the loss at the top, you multiply derivatives along the chain. Backpropagation in Chapter 9 is exactly the chain rule, applied in a careful order.</p>
+        <p>A neural network is dozens or hundreds of compositions stacked on top of each other. To find how a small change in a weight at the bottom affects the loss at the top, you multiply derivatives along the chain. Backpropagation in Chapter 9 is exactly the chain rule, applied in a careful order — once for every layer, with the local rate at each layer being a derivative we already know how to compute.</p>
       </div>
 
       <h3 id="chain-examples">Worked examples</h3>
