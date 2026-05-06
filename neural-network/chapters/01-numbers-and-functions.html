@@ -78,6 +78,12 @@
       <p>
         A neural network is, ultimately, a function with hundreds of millions of parameters. We don't have to memorize them. We just have to know they exist and that we can adjust them.
       </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">A note on $\theta$</div>
+        <p><strong>$\theta$</strong> (the Greek letter "theta") is shorthand for <em>all</em> the parameters of a model bundled together. A network has many individual weights and biases — $w_1, w_2, \ldots, b_1, b_2, \ldots$ — but written as one symbol they become $\theta$.</p>
+        <p>When we write $L(\theta)$ later, that one $\theta$ is hiding millions of numbers. It's just a way to keep equations short.</p>
+      </div>
     </section>
 
     <section id="functions">
@@ -242,7 +248,7 @@
         Beyond plain lines and parabolas, here is the cast that returns later in this site:
       </p>
       <ul>
-        <li><strong>Affine</strong>: $f(x) = wx + b$. The basic neuron before any nonlinearity. Two parameters: a slope $w$ and an offset $b$.</li>
+        <li><strong>Affine</strong>: $f(x) = wx + b$. The basic neuron before any nonlinearity. Two parameters: a slope $w$ and an offset $b$. (High-school algebra writes this as $y = mx + b$. We use $w$ because in a neural network this exact slope is called the <em>weight</em>: the number that gets multiplied by the input. Same number, ML name.)</li>
         <li><strong>Sigmoid</strong>: $\sigma(x) = \dfrac{1}{1 + e^{-x}}$. Squashes any real input into the interval $(0,1)$. Built from $e^x$.</li>
         <li><strong>ReLU</strong>: $\mathrm{ReLU}(x) = \max(0, x)$. Zero for negative inputs, identity for positive ones. Looks like a hockey stick.</li>
         <li><strong>Quadratic</strong>: $f(x) = x^2$. Used everywhere as a "how wrong are we?" measure.</li>
