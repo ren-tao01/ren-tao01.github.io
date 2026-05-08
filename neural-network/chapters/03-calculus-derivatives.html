@@ -51,41 +51,153 @@
       </p>
     </section>
 
-    <section id="limit-definition">
-      <h2>The limit definition</h2>
+    <section id="average-rate">
+      <h2>Average rate of change</h2>
       <p>
-        Pick a function $f$ and an input $x$. Pick a small number $h$. The line through $\bigl(x, f(x)\bigr)$ and $\bigl(x+h, f(x+h)\bigr)$ — the <em>secant line</em> — has slope
+        A line has the same slope everywhere; a curve doesn't. So what could it possibly mean to talk about <em>the</em> slope of $y = x^2$ at the single point $x = 2$? We have to define it, and the definition starts with a trick: approximate.
       </p>
-      $$ \frac{f(x+h) - f(x)}{h}. $$
       <p>
-        Now imagine shrinking $h$ toward zero. The secant line tilts and lines up with the curve right at $x$ — the <em>tangent line</em>. The number it converges to (when it does) is the <strong>derivative</strong> of $f$ at $x$:
+        Pick the input we care about ($x = 2$) and a second input a small distance $h$ to the right ($x = 2 + h$). Two points determine a line, and that line has a slope we already know how to compute — rise over run:
       </p>
-      $$ f'(x) \;=\; \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}. $$
+      $$ \text{slope between the two points} \;=\; \frac{\text{change in output}}{\text{change in input}} \;=\; \frac{f(2+h) - f(2)}{h}. $$
+      <p>
+        The numerator measures how much $f$ moved. The denominator measures how much $x$ moved. Their ratio is sometimes called the <strong>average rate of change</strong> of $f$ over the interval — exactly the same idea as "average speed equals distance over time."
+      </p>
+      <p>
+        Watch what happens to this ratio when we pick smaller and smaller $h$ for $f(x) = x^2$ at $x = 2$:
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>$h$</th><th>$f(2+h) = (2+h)^2$</th><th>$\dfrac{f(2+h) - 4}{h}$</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>$1$</td><td>$9$</td><td>$5$</td></tr>
+          <tr><td>$0.5$</td><td>$6.25$</td><td>$4.5$</td></tr>
+          <tr><td>$0.1$</td><td>$4.41$</td><td>$4.1$</td></tr>
+          <tr><td>$0.01$</td><td>$4.0401$</td><td>$4.01$</td></tr>
+          <tr><td>$0.001$</td><td>$4.004001$</td><td>$4.001$</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        The right column is heading somewhere — a single number, $4$. As $h$ shrinks, the average rate of change settles down on this value. <em>That</em> is what we will call the slope of the curve at $x = 2$.
+      </p>
+      <p>
+        Why not just plug $h = 0$ in directly and skip the table? Because then the formula becomes $\frac{0}{0}$ — division by zero, undefined. Two distinct points are needed to determine a line; if they coincide, "the line through them" is not even well-defined. So we need a way of saying "the value the ratio approaches as $h$ shrinks toward zero" without ever literally setting $h$ to zero. That is what the language of limits, in a moment, will let us do.
+      </p>
+    </section>
+
+    <section id="secant-tangent">
+      <h2>From secant to tangent</h2>
+      <p>
+        The same story plays out as a picture. Pick the point we care about — call it $P$ — and a second point on the curve, $Q$. The straight line drawn through $P$ and $Q$ is called a <strong>secant line</strong>, and its slope is exactly the average rate of change we just computed.
+      </p>
 
       <figure>
-        <svg viewBox="0 0 480 280" width="480" aria-labelledby="fig-secant-title" role="img">
-          <title id="fig-secant-title">A secant line approaching the tangent line as h shrinks</title>
-          <line x1="40" y1="240" x2="460" y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
-          <line x1="40" y1="20"  x2="40"  y2="240" stroke="#1a1a1a" stroke-width="1.5"/>
-          <!-- curve y = 0.025*(x-40)^2 from x=40..420 -->
-          <path d="M 40 240 Q 230 -50, 420 60" fill="none" stroke="#1a1a1a" stroke-width="2"/>
-          <!-- point P at x=200, value approx 0.025*160^2=640 -> off chart, scale: pick smaller curve -->
-          <!-- Use simpler control: curve already drawn. Choose two points along the curve. -->
-          <!-- Approx points on curve: P at (180,160), Q at (340,80). Tangent at P. -->
-          <line x1="50" y1="220" x2="380" y2="40" stroke="#c97b3c" stroke-width="2" stroke-dasharray="6 4"/>
-          <line x1="80" y1="240" x2="320" y2="60" stroke="#2a6f97" stroke-width="2"/>
-          <circle cx="180" cy="160" r="5" fill="#1a1a1a"/>
-          <circle cx="340" cy="80" r="5" fill="#1a1a1a"/>
-          <text x="155" y="155" font-family="Georgia, serif" font-size="13">P</text>
-          <text x="350" y="78"  font-family="Georgia, serif" font-size="13">Q</text>
-          <text x="380" y="32" fill="#c97b3c" font-family="Georgia, serif" font-size="13">tangent at P</text>
-          <text x="100" y="248" fill="#2a6f97" font-family="Georgia, serif" font-size="13">secant PQ</text>
+        <svg viewBox="0 0 480 260" width="480" aria-labelledby="fig-secant-1-title" role="img">
+          <title id="fig-secant-1-title">A secant line drawn through two points P and Q on the curve</title>
+          <!-- axes -->
+          <line x1="40" y1="220" x2="460" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <text x="452" y="236" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">x</text>
+          <text x="24"  y="22"  font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">y</text>
+          <!-- curve y = x^2 -->
+          <path d="M 40 220 Q 240 220 440 20" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+          <!-- secant through P=(240,170) and Q=(360,92) -->
+          <line x1="170" y1="215.5" x2="440" y2="40" stroke="#2a6f97" stroke-width="2"/>
+          <!-- P -->
+          <circle cx="240" cy="170" r="5" fill="#1a1a1a"/>
+          <text x="222" y="190" font-family="Georgia, serif" font-size="14" font-style="italic">P</text>
+          <!-- Q -->
+          <circle cx="360" cy="92" r="5" fill="#1a1a1a"/>
+          <text x="368" y="88" font-family="Georgia, serif" font-size="14" font-style="italic">Q</text>
+          <!-- label -->
+          <text x="290" y="55" fill="#2a6f97" font-family="Georgia, serif" font-size="13">secant PQ</text>
         </svg>
-        <figcaption>As $Q$ slides toward $P$ along the curve, the secant line PQ rotates into the tangent line at $P$.</figcaption>
+        <figcaption>
+          The secant line passes through two points on the curve. Its slope is the average rate of change of $f$ between $P$ and $Q$.
+        </figcaption>
       </figure>
 
       <p>
-        We will not labor over the formal $\varepsilon$–$\delta$ definition of a limit. The intuition — "shrink $h$ and see what number the secant slope is heading toward" — is enough to derive every derivative we need.
+        Now imagine sliding $Q$ toward $P$. As the two points get closer, the secant tilts. Each new $Q$ gives a new secant — and the closer $Q$ gets to $P$, the more the secant tracks the curve's direction at $P$ itself, rather than averaging over a wide gap.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 260" width="480" aria-labelledby="fig-secant-2-title" role="img">
+          <title id="fig-secant-2-title">The same secant after Q has slid much closer to P</title>
+          <!-- axes -->
+          <line x1="40" y1="220" x2="460" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <text x="452" y="236" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">x</text>
+          <text x="24"  y="22"  font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">y</text>
+          <!-- curve y = x^2 -->
+          <path d="M 40 220 Q 240 220 440 20" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+          <!-- secant through P=(240,170) and Q=(280,148), extended -->
+          <line x1="160" y1="214" x2="440" y2="60" stroke="#2a6f97" stroke-width="2"/>
+          <!-- P -->
+          <circle cx="240" cy="170" r="5" fill="#1a1a1a"/>
+          <text x="222" y="190" font-family="Georgia, serif" font-size="14" font-style="italic">P</text>
+          <!-- Q (closer) -->
+          <circle cx="280" cy="148" r="5" fill="#1a1a1a"/>
+          <text x="287" y="143" font-family="Georgia, serif" font-size="14" font-style="italic">Q</text>
+          <!-- label -->
+          <text x="320" y="55" fill="#2a6f97" font-family="Georgia, serif" font-size="13">secant PQ</text>
+        </svg>
+        <figcaption>
+          As $Q$ moves closer to $P$, the secant line better approximates the curve's local slope at $P$.
+        </figcaption>
+      </figure>
+
+      <p>
+        Now imagine continuing the slide all the way. When $Q$ has come right up to $P$, the secant settles into a single position that just <em>kisses</em> the curve at that one point. That limiting line is the <strong>tangent line</strong>, and its slope is what we will call the slope of the curve at $P$.
+      </p>
+
+      <figure>
+        <svg viewBox="0 0 480 260" width="480" aria-labelledby="fig-tangent-title" role="img">
+          <title id="fig-tangent-title">The tangent line touches the curve only at P</title>
+          <!-- axes -->
+          <line x1="40" y1="220" x2="460" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <line x1="40" y1="20"  x2="40"  y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+          <text x="452" y="236" font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">x</text>
+          <text x="24"  y="22"  font-family="Georgia, serif" font-size="12" fill="#4a4a4a" font-style="italic">y</text>
+          <!-- curve y = x^2 -->
+          <path d="M 40 220 Q 240 220 440 20" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+          <!-- tangent at P=(240,170), slope -0.5 -->
+          <line x1="160" y1="210" x2="440" y2="70" stroke="#c97b3c" stroke-width="2"/>
+          <!-- P -->
+          <circle cx="240" cy="170" r="5" fill="#1a1a1a"/>
+          <text x="222" y="190" font-family="Georgia, serif" font-size="14" font-style="italic">P</text>
+          <!-- label -->
+          <text x="300" y="55" fill="#c97b3c" font-family="Georgia, serif" font-size="13">tangent at P</text>
+        </svg>
+        <figcaption>
+          When $Q$ has come all the way to $P$, the secant becomes the tangent line — it touches the curve only at $P$. The slope of this tangent is the derivative of $f$ at $P$.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="limit-definition">
+      <h2>The derivative, formally</h2>
+      <p>
+        With the intuition in place, the formal definition won't surprise you. It just attaches the words "as $h$ shrinks toward zero" to the average-rate-of-change ratio we already have:
+      </p>
+      $$ f'(x) \;=\; \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}. $$
+      <p>
+        Read it piece by piece, using the names we already have:
+      </p>
+      <ul>
+        <li>$f(x+h) - f(x)$ — the <strong>change in output</strong>, how much $f$ moves between $x$ and $x + h$.</li>
+        <li>$h$ — the <strong>change in input</strong>, how far we stepped.</li>
+        <li>The ratio of the two — the slope of the secant line between those two points.</li>
+        <li>$\lim_{h \to 0}$ — "the value this expression approaches as $h$ gets arbitrarily small." We never literally plug $h = 0$ in (that would be $\frac{0}{0}$); we ask where the expression is <em>headed</em>.</li>
+      </ul>
+      <p>
+        The result, $f'(x)$ — read "$f$-prime of $x$" — is itself a function: feed it any input, get back the slope of the original curve at that input. The notation $\dfrac{dy}{dx}$ means the same thing in different clothes; we'll switch between the two as convenient.
+      </p>
+      <p>
+        We won't labor over the formal $\varepsilon$–$\delta$ definition of a limit. The numerical and visual intuition we just built — "shrink $h$ and watch what the ratio is heading toward" — is enough to derive every derivative we'll need.
       </p>
     </section>
 
