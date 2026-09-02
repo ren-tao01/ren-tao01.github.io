@@ -32,54 +32,244 @@
   <main class="prose">
     <p class="chapter-eyebrow">Chapter 4 of 14</p>
     <h1>Multivariable &amp; Gradients</h1>
-    <p><em>Functions of many variables. Partial derivatives. The gradient — a vector that points in the direction of steepest increase. The chain rule when everything is a vector.</em></p>
+    <p><em>Functions that depend on many things at once. Partial derivatives. The gradient — a compass that always points uphill. And gradient descent, the rule that lets a neural network teach itself.</em></p>
 
     <section id="why-multi">
       <h2>Why we need this</h2>
       <p>
-        The loss of a neural network depends on millions of parameters at once. We need calculus that works on a function $L(w_1, w_2, \ldots, w_n)$ — a single number that depends on a long list of inputs. The single-variable derivative from Chapter 3 still applies; we just have to apply it carefully, one input at a time.
+        In Chapter 3 we met the derivative: a single number telling us the slope of a function at a point. It answered the question, <em>"if I nudge the input a tiny bit, how does the output change?"</em> That was enough when the function had only one input. But neural networks don't.
+      </p>
+      <p>
+        A real network has thousands, millions, sometimes <em>billions</em> of trainable weights. Each weight is just a number we are allowed to adjust. The error of the network — how wrong its predictions are — depends on every single one of them simultaneously. Turn one weight up a little; the error shifts. Turn a different weight down a little; the error shifts in a completely different way. We need calculus that can keep track of all of these influences at once.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Picture this</div>
+        <p>Imagine a giant control panel covered in dials. Each dial is one weight in the network. There's a single big display that reads "Error: <em>some number</em>." Your job is to turn the dials so the error gets as small as possible. Some dials matter a lot. Some barely move the needle. <strong>Multivariable calculus is the math that tells you which dial to turn, and by how much.</strong></p>
+      </div>
+
+      <h3>A tiny everyday example</h3>
+      <p>
+        Forget neural networks for a moment. Suppose your exam score depends on two things: how many hours you studied ($s$) and how many hours you slept the night before ($z$). You might guess at a rough relationship like
+      </p>
+      $$ \text{Score}(s, z) \;=\; 5\,s \;+\; 2\,z. $$
+      <p>
+        This is a function of <em>two</em> variables. Doing well requires both. Studying without sleep helps a little; sleeping without studying helps a little; doing both helps a lot. If you wanted to push your score up by one point as cheaply as possible, you'd want to know: <em>which one — an extra hour of study or an extra hour of sleep — moves the score more?</em> That is exactly the question multivariable calculus answers, and it's the same question a neural network is asking, just with millions of variables instead of two.
+      </p>
+
+      <div class="callout">
+        <div class="callout-title">Key idea</div>
+        <p>Each weight is like a knob you can turn. The network's error depends on all the knobs together. To train the network, we need a way to ask, for every knob, <em>"if I turn just this one, does the error go up or down, and by how much?"</em></p>
+      </div>
+
+      <h3>The training pipeline at a glance</h3>
+      <p>
+        Here is the loop we are slowly building toward. Don't memorize it — just glance at it and know it's coming:
+      </p>
+      <p style="text-align:center; font-family: var(--font-mono); font-size: 0.95em;">
+        prediction → error → loss → <strong>gradient</strong> → weight update → better prediction → …
+      </p>
+      <p>
+        This chapter lives in the middle. Once we have a single number called the <strong>loss</strong> that measures how wrong the network is, the <strong>gradient</strong> tells us how to change the weights to drive that number down. Everything else in the book builds on this one idea.
       </p>
     </section>
 
     <section id="partial-derivatives">
       <h2>Partial derivatives</h2>
+
       <p>
-        Let $f(x, y) = x^2 + 3xy + y^3$. To compute the <strong>partial derivative</strong> of $f$ with respect to $x$, we treat every other variable as a constant and differentiate as usual:
+        Suppose you're tasting a soup. It's a little off. Did you add too much salt? Too much pepper? Too much water? You can't easily tell from one taste. So what do you do? You change <em>one ingredient at a time</em> and taste again. If you adjust only the salt and the soup gets better, you've learned something about salt — the other ingredients didn't change, so they can't be responsible for the difference.
       </p>
-      $$ \frac{\partial f}{\partial x} = 2x + 3y. $$
       <p>
-        Likewise, for the partial with respect to $y$:
+        That is exactly what a partial derivative does. It freezes every variable except one and asks: <em>if only this one variable changes, how fast does the function change?</em>
       </p>
-      $$ \frac{\partial f}{\partial y} = 3x + 3y^2. $$
-      <p>
-        The curly $\partial$ is read "partial." It's just a reminder that the function has other variables you are deliberately holding fixed.
-      </p>
+
       <div class="callout intuition">
-        <div class="callout-title">Intuition</div>
-        <p>The partial $\partial f / \partial x$ at a point $(x_0, y_0)$ tells you: <em>if I freeze $y$ at $y_0$ and slide $x$ a tiny bit, how fast does $f$ change?</em> Slice the surface $f$ with a vertical plane parallel to the $x$-axis; the partial is the slope of the resulting curve.</p>
+        <div class="callout-title">Hill-walking analogy</div>
+        <p>You're standing on a hillside. The height of the ground depends on two coordinates: how far north you are, and how far east. Take one step <strong>strictly east</strong> (refusing to budge north or south) — the ground rises or falls by some amount. That rise-over-run is the partial derivative with respect to east. Take a step <strong>strictly north</strong>, and you measure the partial derivative with respect to north. Two different directions, two different slopes — both true at the same point.</p>
+      </div>
+
+      <h3>Computing one</h3>
+      <p>
+        Let's try the function
+      </p>
+      $$ f(x, y) \;=\; x^2 + 3xy + y^3. $$
+      <p>
+        To compute the partial derivative with respect to $x$, we pretend $y$ is a fixed constant — a number that doesn't move — and differentiate the rest using the rules from Chapter 3:
+      </p>
+      <ul>
+        <li>$x^2$ differentiates to $2x$.</li>
+        <li>$3xy$ — because $y$ is being treated as a constant — is just $(3y) \cdot x$, which differentiates to $3y$.</li>
+        <li>$y^3$ has no $x$ in it at all, so its derivative with respect to $x$ is $0$.</li>
+      </ul>
+      <p>
+        Add them up:
+      </p>
+      $$ \frac{\partial f}{\partial x} \;=\; 2x + 3y. $$
+      <p>
+        Now switch roles: treat $x$ as the constant and differentiate with respect to $y$:
+      </p>
+      $$ \frac{\partial f}{\partial y} \;=\; 3x + 3y^2. $$
+
+      <h3>Reading the notation</h3>
+      <p>
+        That curly $\partial$ symbol is read "partial." It looks like an italic $d$ with a flourish. The flourish is a small reminder: <em>"there are other variables here, but I'm holding them still on purpose."</em>
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Symbol</th><th>Plain English</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>$f(x, y)$</td><td>A function whose value depends on both $x$ and $y$.</td></tr>
+          <tr><td>$\dfrac{\partial f}{\partial x}$</td><td>How fast $f$ changes when only $x$ moves and $y$ is held still.</td></tr>
+          <tr><td>$\dfrac{\partial f}{\partial y}$</td><td>How fast $f$ changes when only $y$ moves and $x$ is held still.</td></tr>
+          <tr><td>$\dfrac{df}{dx}$ (no curl)</td><td>The single-variable derivative from Chapter 3 — used when there's only one input.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Plugging in numbers</h3>
+      <p>
+        A formula like $\partial f / \partial x = 2x + 3y$ is still a function. To get an actual slope, plug in a point. At $(x, y) = (1, 2)$:
+      </p>
+      $$ \left.\frac{\partial f}{\partial x}\right|_{(1,2)} \!\!= 2(1) + 3(2) = 8, \qquad \left.\frac{\partial f}{\partial y}\right|_{(1,2)} \!\!= 3(1) + 3(2)^2 = 15. $$
+      <p>
+        Read these out loud. At this specific point, nudging $x$ a tiny amount changes $f$ about 8 times as fast as the nudge; nudging $y$ by the same tiny amount changes $f$ about 15 times as fast. So $y$ has more leverage here than $x$. Different points in the plane will report different leverage — that's the whole point of doing calculus rather than algebra.
+      </p>
+
+      <div class="callout">
+        <div class="callout-title">Key idea</div>
+        <p>A partial derivative is just an ordinary derivative — but you've sworn an oath to leave every other variable untouched while you compute it.</p>
       </div>
     </section>
 
     <section id="gradient">
-      <h2>The gradient</h2>
+      <h2>The gradient: a compass for functions</h2>
+
       <p>
-        Bundle all the partials into a single vector and you get the <strong>gradient</strong>:
+        Single-variable derivatives have it easy. There's only one direction to move (left or right), so there's only one slope to talk about. Multivariable functions are different: from any given point you can move in <em>infinitely many</em> directions — northeast, due south, up-and-to-the-left, anything in between. Each direction has its own slope. Which one should we report?
+      </p>
+      <p>
+        The clean answer turns out to be: <em>collect the partial derivatives — one per axis — into a single vector.</em> That bundle has a name.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Compass analogy</div>
+        <p>Think of the gradient as a tiny compass placed at a point on a hillside. Instead of pointing north, the needle always points <strong>uphill in the steepest direction available</strong>. The longer the needle, the steeper the slope. At a flat spot — the bottom of a valley, the top of a peak, or a saddle — the needle has zero length and stops pointing anywhere.</p>
+      </div>
+
+      <h3>Definition</h3>
+      <p>
+        For a function $f(x_1, x_2, \ldots, x_n)$, the <strong>gradient</strong> is the column vector that stacks together every partial derivative:
       </p>
       $$ \nabla f \;=\; \begin{bmatrix} \partial f / \partial x_1 \\ \partial f / \partial x_2 \\ \vdots \\ \partial f / \partial x_n \end{bmatrix}. $$
       <p>
-        This is a vector-valued thing: at every point in the input space it is a vector with the same dimension as the input. Two facts make it indispensable.
+        That upside-down triangle, $\nabla$, is called <em>nabla</em>. You can read $\nabla f$ as "the gradient of $f$" or, in plain words, "all the partial derivatives of $f$, gathered into one list."
       </p>
+
+      <table>
+        <thead>
+          <tr><th>Symbol</th><th>Plain English</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>$x_i$</td><td>The $i$-th input variable (e.g. the $i$-th weight of the network).</td></tr>
+          <tr><td>$\partial f / \partial x_i$</td><td>How fast $f$ changes when only $x_i$ moves.</td></tr>
+          <tr><td>$\nabla f$</td><td>All those rates, packed into a single vector — one slot per input.</td></tr>
+          <tr><td>$\nabla f$ at point $\mathbf{p}$</td><td>The compass needle at the location $\mathbf{p}$ in input space.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Two facts that make it useful</h3>
       <ol>
-        <li>The gradient points in the direction of <strong>steepest increase</strong> of $f$. There is no other direction in which $f$ grows faster.</li>
-        <li>Its length tells you <em>how fast</em> $f$ grows along that steepest direction.</li>
+        <li>The gradient points in the direction of <strong>steepest increase</strong>. Out of all directions you could step, this is the one that makes $f$ grow fastest.</li>
+        <li>Its <em>length</em> tells you <em>how steep</em> that fastest direction is. A small gradient means a gentle slope; a large gradient means a cliff.</li>
       </ol>
+
       <p>
-        So the negative gradient, $-\nabla f$, points in the direction of steepest <em>decrease</em>. That is exactly what we want when we are trying to drive a loss down. Gradient descent in Chapter 7 is one short formula:
+        And here's the consequence we will lean on for the rest of the book:
       </p>
-      $$ \mathbf{w}_{\text{new}} \;=\; \mathbf{w}_{\text{old}} \;-\; \eta\, \nabla L(\mathbf{w}_{\text{old}}), $$
+
+      <div class="callout">
+        <div class="callout-title">Key idea</div>
+        <p>If $\nabla f$ points uphill, then its negative, $-\nabla f$, points <em>downhill</em> — and it's the steepest downhill direction available. To make $f$ smaller as fast as possible, take a small step in the direction of $-\nabla f$. Hold on to this sentence; it's the heart of how networks learn.</p>
+      </div>
+
+      <h3>A concrete example: $f(x, y) = x^2 + y^2$</h3>
       <p>
-        where $\eta$ is a small positive learning rate. Take a small step downhill; repeat.
+        This function looks like a perfectly round bowl, lowest at the origin and rising in every direction. Let's compute its gradient.
       </p>
+      <p>
+        Partial with respect to $x$ (treating $y$ as a constant): $\partial f / \partial x = 2x$. Partial with respect to $y$ (treating $x$ as a constant): $\partial f / \partial y = 2y$. Stacking them gives the gradient:
+      </p>
+      $$ \nabla f(x, y) \;=\; \begin{bmatrix} 2x \\ 2y \end{bmatrix}. $$
+      <p>
+        Try a few points and see whether the answer matches your intuition for a bowl:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Point</th><th>$\nabla f$ there</th><th>What it says</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>$(1, 0)$</td><td>$(2, 0)$</td><td>Steepest increase is straight along $+x$.</td></tr>
+          <tr><td>$(0, 1)$</td><td>$(0, 2)$</td><td>Steepest increase is straight along $+y$.</td></tr>
+          <tr><td>$(3, 4)$</td><td>$(6, 8)$</td><td>Steepest increase is outward, away from the origin.</td></tr>
+          <tr><td>$(0, 0)$</td><td>$(0, 0)$</td><td>You're at the bottom. There's no uphill — every direction is flat or up.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        At every non-origin point, the gradient points <em>away</em> from the origin — that is, toward higher values of $f$. Exactly what we'd expect from a bowl whose lowest point is at the center.
+      </p>
+    </section>
+
+    <section id="gradient-descent-intuition">
+      <h2>Gradient descent: walking downhill</h2>
+      <p>
+        Now we have everything we need to state the central optimization rule of machine learning. Imagine being dropped onto a foggy hillside. You can't see far, but you can feel the slope under your feet. To get to the bottom, you don't need a map — you only need a strategy: <em>take a small step in whatever direction feels most downhill, then look around and repeat.</em> Eventually, you reach a valley.
+      </p>
+      <p>
+        That is gradient descent. The "feeling under your feet" is the gradient. The "small step" is something we control with a number called the <strong>learning rate</strong>.
+      </p>
+
+      <div class="callout intuition">
+        <div class="callout-title">Why a small step?</div>
+        <p>The gradient describes the slope <em>right where you are standing</em>, and nowhere else. Walk a long way and the hillside might curve, twist, or even start going up again. So we trust the gradient just enough to take a cautious step, then re-measure. <strong>Local information, used carefully and repeatedly.</strong></p>
+      </div>
+
+      <h3>The update rule</h3>
+      <p>
+        Let $\mathbf{w}$ be a vector containing all the parameters (the dials), and let $L(\mathbf{w})$ be the loss — the single number we're trying to drive down. The gradient descent update is:
+      </p>
+      $$ \mathbf{w}_{\text{new}} \;=\; \mathbf{w}_{\text{old}} \;-\; \eta\, \nabla L(\mathbf{w}_{\text{old}}). $$
+
+      <table>
+        <thead>
+          <tr><th>Symbol</th><th>Plain English</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>$\mathbf{w}$</td><td>All the weights of the network, gathered into a single (possibly huge) vector.</td></tr>
+          <tr><td>$L(\mathbf{w})$</td><td>The loss — one number measuring how wrong the network's predictions are.</td></tr>
+          <tr><td>$\nabla L(\mathbf{w})$</td><td>The vector of partial derivatives of the loss with respect to every weight.</td></tr>
+          <tr><td>$\eta$ (eta)</td><td>The learning rate — a small positive number controlling step size.</td></tr>
+          <tr><td>The minus sign</td><td>Because $\nabla L$ points uphill, and we want to go <em>down</em>.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>A worked numerical step</h3>
+      <p>
+        Take our bowl $f(x, y) = x^2 + y^2$ as a stand-in for a loss function. Suppose we currently sit at the point $(x, y) = (3, 4)$. The value of $f$ there is $9 + 16 = 25$. Not great — we'd like to be closer to the bottom (the origin), where $f = 0$.
+      </p>
+      <p>
+        At $(3, 4)$ the gradient is $(2 \cdot 3,\; 2 \cdot 4) = (6, 8)$. With learning rate $\eta = 0.1$, the gradient descent update is:
+      </p>
+      $$ (x, y)_{\text{new}} \;=\; (3, 4) \;-\; 0.1 \cdot (6, 8) \;=\; (3 - 0.6,\; 4 - 0.8) \;=\; (2.4, 3.2). $$
+      <p>
+        And $f(2.4, 3.2) = 5.76 + 10.24 = 16.0$. Down from $25$. We're closer to the bottom. From $(2.4, 3.2)$ the gradient is $(4.8, 6.4)$, taking us next to $(1.92, 2.56)$ where $f = 10.24$. Lower again. Repeat enough times and we creep arbitrarily close to the origin. That's gradient descent in action — small step, re-measure, small step, re-measure.
+      </p>
+
+      <div class="callout warn">
+        <div class="callout-title">A note on the learning rate</div>
+        <p>If $\eta$ is too small, training crawls. If $\eta$ is too large, the step overshoots and the loss can actually <em>increase</em> — like trying to climb down a hill in giant leaps and tumbling past the bottom. Picking $\eta$ well is one of the everyday arts of training neural networks. We'll come back to this in Chapter 7.</p>
+      </div>
 
       <figure>
         <svg viewBox="0 0 560 320" width="560" aria-labelledby="fig-gradient-title" role="img">
@@ -130,94 +320,151 @@
           <text x="288" y="200" text-anchor="end" font-family="Georgia, serif" font-size="14" fill="#5b8c3e" font-weight="bold">−∇f</text>
           <text x="288" y="216" text-anchor="end" font-family="Georgia, serif" font-size="12" fill="#5b8c3e">(downhill)</text>
         </svg>
-        <figcaption>Contours are level sets of $f$. The gradient is perpendicular to the contour and points outward (uphill). Its negative is the direction we step in gradient descent.</figcaption>
+        <figcaption>A contour map of a bowl-shaped function. Each blue ellipse is a <strong>contour</strong> — a set of points where $f$ has the same value, like elevation lines on a topographic map. At point $P$, the orange arrow $\nabla f$ points uphill, perpendicular to the contour. The green arrow $-\nabla f$ is the direction we step in gradient descent.</figcaption>
       </figure>
     </section>
 
     <section id="why-perpendicular">
       <h2>Why the gradient is perpendicular to contours</h2>
       <p>
-        A <strong>contour</strong> (level set) of $f$ is a curve where $f$ stays constant. If you walk along a contour, $f$ doesn't change — its derivative along the walk is zero. The gradient $\nabla f$ tells you the direction along which $f$ changes fastest. A direction with zero change must be perpendicular to a direction with maximum change. Hence: gradients sit at right angles to contours.
+        A <strong>contour</strong> (or <em>level set</em>) of $f$ is a curve along which $f$ stays constant — exactly the same idea as the elevation lines on a hiking map. If you walk along a contour, the height never changes; your footing stays at the same altitude the whole time.
       </p>
       <p>
-        This is also why "steepest descent" doesn't trace a contour — it crosses contours at right angles, dropping in $f$ as fast as possible.
+        Now consider the two extremes of "rate of change" at a single point:
+      </p>
+      <ul>
+        <li>Walking <strong>along the contour</strong>, $f$ doesn't change at all. Rate of change = $0$.</li>
+        <li>Walking in the direction of $\nabla f$, $f$ changes <strong>as fast as possible</strong>. Rate of change = maximum.</li>
+      </ul>
+      <p>
+        A direction with zero change and a direction with maximum change must be perpendicular to each other. (If they weren't, you could nudge your "zero change" direction a little toward the gradient and pick up some change — contradiction.) So:
+      </p>
+      <p style="text-align:center;"><strong>The gradient always crosses contours at right angles.</strong></p>
+      <p>
+        That's why gradient descent, which follows $-\nabla f$, doesn't trace a contour — it cuts straight across them, dropping in $f$ as fast as the local geometry allows.
       </p>
     </section>
 
     <section id="multivariable-chain-rule">
       <h2>The multivariable chain rule</h2>
       <p>
-        Single-variable: if $y = f(g(x))$, then $\dfrac{dy}{dx} = f'(g(x))\, g'(x)$.
+        In Chapter 3 the chain rule said: if $y = f(g(x))$, then $\dfrac{dy}{dx} = f'(g(x))\, g'(x)$. In words, the derivative of a composition is the product of the inner and outer derivatives. We need a version that handles many inputs and many intermediate steps, because that's what a deep network is — a long chain of compositions.
       </p>
       <p>
-        What if $y = f(u, v)$ and both $u$ and $v$ depend on $x$? You add up the contributions through each path:
+        Suppose $y = f(u, v)$ and both $u$ and $v$ depend on $x$. Then there are <em>two paths</em> from $x$ to $y$: one going through $u$, and one going through $v$. To get the total rate at which $y$ changes when $x$ moves, you add up the contributions of each path, where each path contributes the product of derivatives along it:
       </p>
-      $$ \frac{dy}{dx} = \frac{\partial f}{\partial u}\, \frac{du}{dx} + \frac{\partial f}{\partial v}\, \frac{dv}{dx}. $$
+      $$ \frac{dy}{dx} \;=\; \underbrace{\frac{\partial f}{\partial u}\, \frac{du}{dx}}_{\text{path through } u} \;+\; \underbrace{\frac{\partial f}{\partial v}\, \frac{dv}{dx}}_{\text{path through } v}. $$
       <p>
-        And if $u, v$ each depend on several variables $x_1, \ldots, x_m$? You get one such equation per $x_i$, with partials throughout:
+        And if $u, v$ each depend on several variables $x_1, \ldots, x_m$, then you get one such equation per input, with partials throughout:
       </p>
-      $$ \frac{\partial y}{\partial x_i} = \frac{\partial f}{\partial u}\, \frac{\partial u}{\partial x_i} + \frac{\partial f}{\partial v}\, \frac{\partial v}{\partial x_i}. $$
+      $$ \frac{\partial y}{\partial x_i} \;=\; \frac{\partial f}{\partial u}\, \frac{\partial u}{\partial x_i} \;+\; \frac{\partial f}{\partial v}\, \frac{\partial v}{\partial x_i}. $$
 
-      <div class="callout">
-        <div class="callout-title">Read this twice</div>
-        <p>The multivariable chain rule says: <em>for each input variable, sum over all paths through which it influences the output</em>. Each path contributes a product of partials, one per link. Backpropagation is exactly this rule, scaled up to a network of paths.</p>
+      <div class="callout intuition">
+        <div class="callout-title">Read this slowly</div>
+        <p>The multivariable chain rule says: <em>for each input variable, sum over all the paths through which it can influence the output</em>. Each path contributes a product of partials, one factor per link in the chain. Backpropagation — the algorithm that trains modern neural networks — is just this rule, applied carefully through every layer of the network.</p>
       </div>
     </section>
 
     <section id="jacobians">
-      <h2>Jacobians</h2>
+      <h2>Jacobians: gradients for vector-valued functions</h2>
       <p>
-        Now consider a function $\mathbf{f} : \mathbb{R}^n \to \mathbb{R}^m$ — input is a vector, output is a vector. We have $m$ output components, each depending on $n$ input components. Stack all the partials in a matrix:
+        Sometimes a function takes a vector in and returns a single number — like the loss. Its gradient is a vector. But sometimes a function takes a vector in and returns <em>another vector</em> out — like a layer of a neural network, which transforms one list of activations into another. We need a way to bookkeep all the partials in this case too.
       </p>
-      $$ \mathbf{J}_{\mathbf{f}} = \begin{bmatrix}
+      <p>
+        Suppose $\mathbf{f}$ takes $n$ inputs and produces $m$ outputs. There are $m$ output components, each depending on $n$ input components, so $m \times n$ partials in total. Stack them in a matrix:
+      </p>
+      $$ \mathbf{J}_{\mathbf{f}} \;=\; \begin{bmatrix}
         \partial f_1 / \partial x_1 & \cdots & \partial f_1 / \partial x_n \\
         \vdots & \ddots & \vdots \\
         \partial f_m / \partial x_1 & \cdots & \partial f_m / \partial x_n
-      \end{bmatrix} \in \mathbb{R}^{m \times n}. $$
+      \end{bmatrix} \;\in\; \mathbb{R}^{m \times n}. $$
       <p>
-        That's the <strong>Jacobian matrix</strong>. Row $i$ is the gradient of the $i$-th output (transposed); column $j$ tells you how all outputs depend on $x_j$. The vector chain rule reads neatly as a matrix product: if $\mathbf{y} = \mathbf{f}(\mathbf{x})$ and $\mathbf{z} = \mathbf{g}(\mathbf{y})$, then
+        That's the <strong>Jacobian matrix</strong>. A useful way to read it:
+      </p>
+      <ul>
+        <li>Row $i$ describes how output component $f_i$ depends on each input — it's the gradient of $f_i$ written sideways.</li>
+        <li>Column $j$ describes how every output reacts when input $x_j$ wiggles.</li>
+      </ul>
+      <p>
+        With Jacobians, the messy summation form of the multivariable chain rule turns into clean matrix multiplication. If $\mathbf{y} = \mathbf{f}(\mathbf{x})$ and $\mathbf{z} = \mathbf{g}(\mathbf{y})$, then
       </p>
       $$ \mathbf{J}_{\mathbf{g} \circ \mathbf{f}}(\mathbf{x}) \;=\; \mathbf{J}_{\mathbf{g}}(\mathbf{y}) \cdot \mathbf{J}_{\mathbf{f}}(\mathbf{x}). $$
       <p>
-        Notice the order: outer Jacobian on the left, inner Jacobian on the right. The matrix multiplication enforces the shape constraints automatically.
+        Outer Jacobian on the left, inner Jacobian on the right. The shapes line up automatically — that's part of why this notation is so popular.
       </p>
 
-      <h3 id="jacobian-example">Worked example</h3>
+      <h3 id="jacobian-example">Worked example: a linear function</h3>
       <p>
-        Let $\mathbf{y} = \mathbf{A}\mathbf{x}$ where $\mathbf{A}$ is a fixed matrix. The $i$-th component is $y_i = \sum_j A_{ij} x_j$, so $\partial y_i / \partial x_j = A_{ij}$. The Jacobian is just $\mathbf{A}$ itself:
+        Let $\mathbf{y} = \mathbf{A}\mathbf{x}$, where $\mathbf{A}$ is a fixed matrix of numbers. The $i$-th component is just a weighted sum:
       </p>
-      $$ \mathbf{J}_{\mathbf{y}}(\mathbf{x}) = \mathbf{A}. $$
+      $$ y_i \;=\; \sum_j A_{ij}\, x_j, \qquad \text{so} \qquad \frac{\partial y_i}{\partial x_j} \;=\; A_{ij}. $$
       <p>
-        Linear functions are their own derivatives. (This is the matrix version of "the derivative of $mx + b$ is $m$.")
+        The Jacobian is therefore the matrix $\mathbf{A}$ itself:
+      </p>
+      $$ \mathbf{J}_{\mathbf{y}}(\mathbf{x}) \;=\; \mathbf{A}. $$
+      <p>
+        This is the matrix version of the familiar fact that the derivative of $mx + b$ is $m$. Linear functions are their own derivatives, even when they live in many dimensions.
       </p>
     </section>
 
     <section id="gradient-of-loss">
       <h2>What the gradient of the loss looks like</h2>
       <p>
-        The loss $L$ takes the parameters $\mathbf{w}$ and returns a single number. Its gradient $\nabla_{\mathbf{w}} L$ is therefore a vector of the same shape as $\mathbf{w}$, one partial derivative per parameter. If your model has 175 billion parameters, the gradient is a 175-billion-dimensional vector — a structured object, but each component is just one partial.
+        Now zoom out and put it all together. The loss $L$ takes the parameters $\mathbf{w}$ (every weight in the network, gathered into one giant vector) and returns a single number measuring error. So $\nabla_{\mathbf{w}} L$ is a vector with the <em>same shape</em> as $\mathbf{w}$ — one partial derivative per parameter. If the network has 175 billion parameters, the gradient has 175 billion components. A scary-sounding object, but each component is just one ordinary partial derivative.
       </p>
       <p>
-        Two practical points carry forward:
+        Two facts make this object useful in practice:
       </p>
       <ul>
-        <li>The gradient lives in the same space as the parameters. You can <em>add</em> a small multiple of $-\nabla L$ to the parameters; that's the update step.</li>
-        <li>To compute the gradient efficiently, we apply the chain rule layer by layer, in reverse. That algorithm is backpropagation.</li>
+        <li><strong>It lives in the same space as the parameters.</strong> That means we can subtract a small multiple of it directly from $\mathbf{w}$. The result is just another valid set of weights — slightly better than the ones we started with.</li>
+        <li><strong>It tells the network how to improve.</strong> Each component answers, for one specific weight, the question <em>"should I go up or down, and by how much, to make the loss smaller?"</em></li>
       </ul>
+
+      <div class="callout">
+        <div class="callout-title">Why optimization matters</div>
+        <p>A neural network at initialization is just a pile of random numbers — its predictions are nonsense. What turns it into something useful is the <em>process</em> of repeatedly computing the gradient of the loss and stepping the weights in the downhill direction. There is no magic in the architecture alone; the magic is in the optimization. The model learns because the gradient keeps pointing the way down.</p>
+      </div>
+    </section>
+
+    <section id="backprop-preview">
+      <h2>A peek at backpropagation</h2>
+      <p>
+        We have not yet said <em>how</em> to compute the gradient when the network has a billion weights. Doing it naively — by perturbing each weight one at a time and re-running the whole network — would be hopelessly slow. Fortunately, there's a much smarter way.
+      </p>
+      <p>
+        A deep neural network is a long composition of simple functions: input → layer 1 → layer 2 → … → output → loss. The multivariable chain rule from earlier in this chapter tells us how to differentiate compositions. If we apply it carefully, layer by layer, working <em>backward</em> from the loss to the inputs, we can compute every partial derivative of $L$ in roughly the same time it took to compute $L$ itself.
+      </p>
+      <p>
+        That algorithm has a name: <strong>backpropagation</strong>. It's the chain rule, organized cleverly, executed in reverse. We'll spend an entire chapter on it later. For now, just hold on to the picture: the gradient isn't computed by brute force — it flows backward through the network, one layer at a time, each step using nothing more than the chain rule we already know.
+      </p>
+
+      <div class="callout">
+        <div class="callout-title">Coming up</div>
+        <p>Chapter 7 introduces the loss function and gradient descent in earnest. Chapter 9 builds backpropagation from scratch. Both rest on the ideas you just learned: partial derivatives, the gradient as a compass, and the chain rule for compositions.</p>
+      </div>
     </section>
 
     <section id="check-yourself">
       <h2>Check yourself</h2>
       <ol>
-        <li>If $f(x,y) = x^2 y$, what are $\partial f/\partial x$ and $\partial f/\partial y$?</li>
-        <li>What is $\nabla f$ for the function $f(x,y) = \tfrac12(x^2 + y^2)$?</li>
-        <li>Why is $-\nabla L$ the right direction for "downhill"?</li>
-        <li>If $\mathbf{y} = \mathbf{A}\mathbf{x} + \mathbf{b}$, what is $\partial \mathbf{y} / \partial \mathbf{x}$?</li>
-        <li>Two functions composed; their Jacobians multiply. In what order?</li>
+        <li>If $f(x, y) = x^2 y$, what are $\partial f / \partial x$ and $\partial f / \partial y$?</li>
+        <li>What is $\nabla f$ for the function $f(x, y) = \tfrac{1}{2}(x^2 + y^2)$? At the point $(1, 1)$, which direction does the gradient point?</li>
+        <li>Why is $-\nabla L$ the right direction to step when we want the loss to decrease?</li>
+        <li>If $\mathbf{y} = \mathbf{A}\mathbf{x} + \mathbf{b}$, what is the Jacobian $\partial \mathbf{y} / \partial \mathbf{x}$?</li>
+        <li>Two functions are composed; their Jacobians multiply. In what order?</li>
+        <li>You're at point $(2, 1)$ on the bowl $f(x, y) = x^2 + y^2$, and you take one gradient descent step with learning rate $\eta = 0.25$. Where do you land, and how much did $f$ drop?</li>
       </ol>
       <p>
-        Answers: $2xy$ and $x^2$; $\nabla f = (x, y)$ — a vector pointing radially outward from the origin; because $\nabla L$ is uphill, its negative is downhill, the steepest downhill at that; the Jacobian is $\mathbf{A}$; outer first, then inner: $\mathbf{J}_{\mathbf{g}}(\mathbf{f}(\mathbf{x})) \, \mathbf{J}_{\mathbf{f}}(\mathbf{x})$.
+        <strong>Answers:</strong>
       </p>
+      <ol>
+        <li>$\partial f / \partial x = 2xy$ and $\partial f / \partial y = x^2$.</li>
+        <li>$\nabla f = (x, y)$. At $(1, 1)$ it points in the direction $(1, 1)$ — diagonally outward from the origin, which is uphill on the bowl.</li>
+        <li>Because $\nabla L$ points in the steepest <em>uphill</em> direction; its negative therefore points in the steepest <em>downhill</em> direction — the fastest way to reduce the loss locally.</li>
+        <li>The Jacobian is $\mathbf{A}$. The constant $\mathbf{b}$ contributes zero to every partial.</li>
+        <li>Outer first, then inner: $\mathbf{J}_{\mathbf{g}}(\mathbf{f}(\mathbf{x})) \cdot \mathbf{J}_{\mathbf{f}}(\mathbf{x})$.</li>
+        <li>The gradient at $(2, 1)$ is $(4, 2)$. The update is $(2, 1) - 0.25 \cdot (4, 2) = (1, 0.5)$. The loss drops from $f(2,1) = 5$ to $f(1, 0.5) = 1.25$.</li>
+      </ol>
     </section>
 
     <footer class="chapter-end" data-complete-marker>
